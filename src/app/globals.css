@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f9fafb;
+  --foreground: #111827;
+  
+  --card: #ffffff;
+  --card-foreground: #111827;
+  
+  --muted: #f3f4f6;
+  --muted-foreground: #4b5563;
+  
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  
+  --primary: #059669;          /* Esmeralda / Verde */
+  --primary-foreground: #ffffff;
+  
+  --accent: #ecfdf5;
+  --accent-foreground: #059669;
+  
+  --success: #10b981;
+  --warning: #f59e0b;
+  --destructive: #ef4444;
+}
+
+.dark {
+  --background: #09090b;       /* Fondo carbón mate oscuro */
+  --foreground: #f4f4f5;
+  
+  --card: #18181b;             /* Tarjetas gris carbón */
+  --card-foreground: #f4f4f5;
+  
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  
+  --border: #27272a;
+  --input: #27272a;
+  
+  --primary: #10b981;          /* Verde brillante */
+  --primary-foreground: #ffffff;
+  
+  --accent: #064e3b;
+  --accent-foreground: #a7f3d0;
+  
+  --success: #10b981;
+  --warning: #f59e0b;
+  --destructive: #ef4444;
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
+  
+  --radius-lg: 0.5rem;
+  --radius-md: calc(0.5rem - 2px);
+  --radius-sm: calc(0.5rem - 4px);
+}
+
+@layer base {
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  }
+}
+
+/* Clases útiles para bordes y sombras premium */
+.glow-green {
+  box-shadow: 0 0 15px -3px rgba(16, 185, 129, 0.4);
+}
+
+.glow-green-sm {
+  box-shadow: 0 0 10px -4px rgba(16, 185, 129, 0.3);
+}
+
+.glassmorphism {
+  background: rgba(24, 24, 27, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
