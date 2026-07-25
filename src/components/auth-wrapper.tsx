@@ -12,7 +12,7 @@ const isDemo = () => {
 };
 
 // --- ESTRUCTURA MOCK PARA MODO DEMO ---
-export type UserRole = "SUPER_ADMIN" | "TALLER_ADMIN" | "TALLER_RECEP" | "TALLER_TECNICO";
+export type UserRole = "SUPER_ADMIN" | "TALLER_ADMIN" | "TALLER_JEFE" | "TALLER_RECEP" | "TALLER_TECNICO";
 
 type MockUser = {
   id: string;
@@ -37,6 +37,14 @@ const mockUsers: Record<UserRole, MockUser> = {
     fullName: "Don Carlos (Admin de Taller)",
     email: "carlos@tallerlosamigos.com",
     role: "TALLER_ADMIN",
+    tallerName: "Taller Los Amigos",
+    tallerSlug: "taller-los-amigos"
+  },
+  TALLER_JEFE: {
+    id: "user_taller_jefe",
+    fullName: "Roberto (Jefe de Taller)",
+    email: "roberto@tallerlosamigos.com",
+    role: "TALLER_JEFE",
     tallerName: "Taller Los Amigos",
     tallerSlug: "taller-los-amigos"
   },

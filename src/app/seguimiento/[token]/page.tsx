@@ -331,7 +331,7 @@ export default function ClienteSeguimientoPage() {
             </h3>
 
             <div className="grid grid-cols-1 gap-2.5">
-              {ot.fotos.map((f, i) => (
+              {ot.fotos.map((f: any, i: number) => (
                 <div key={i} className="border border-border rounded-lg overflow-hidden bg-muted">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={f.url} alt={f.descripcion} className="w-full aspect-[16/9] object-cover" />
@@ -354,7 +354,7 @@ export default function ClienteSeguimientoPage() {
             </h3>
 
             <div className="space-y-2">
-              {ot.comentariosTaller.map((nota, i) => (
+              {ot.comentariosTaller.map((nota: string, i: number) => (
                 <div key={i} className="p-3 bg-muted/30 border border-border/70 rounded-lg text-xs leading-relaxed text-muted-foreground">
                   {nota}
                 </div>

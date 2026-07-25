@@ -52,6 +52,8 @@ interface OT {
   tecnico: string;
   costoManoObra: number;
   repuestosCost: number;
+  costoTotal: number;
+  itemsPresupuesto?: any[];
   tokenSeguro: string;
 }
 
@@ -66,6 +68,7 @@ const initialOTs: OT[] = [
     tecnico: "Alexis Sánchez (Mecánico)",
     costoManoObra: 45000,
     repuestosCost: 25000,
+    costoTotal: 70000,
     tokenSeguro: "ot-demo-token"
   },
   {
@@ -78,6 +81,7 @@ const initialOTs: OT[] = [
     tecnico: "Sin Asignar",
     costoManoObra: 0,
     repuestosCost: 0,
+    costoTotal: 0,
     tokenSeguro: "patricia-rav4"
   },
   {
@@ -90,6 +94,7 @@ const initialOTs: OT[] = [
     tecnico: "Alexis Sánchez (Mecánico)",
     costoManoObra: 120000,
     repuestosCost: 180000,
+    costoTotal: 300000,
     tokenSeguro: "ranger-valle"
   }
 ];
@@ -106,7 +111,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const [formClient, setFormClient] = useState({ nombre: "", rut: "", telefono: "" });
   const [formVehiculo, setFormVehiculo] = useState({ patente: "", marca: "", modelo: "", kilometraje: "" });
   const [formOT, setFormOT] = useState({ combustible: "50", observaciones: "" });
-  const [activeTab, setActiveTab] = useState<"ots" | "crear" | "trabajadores">("ots");
+  const [activeTab, setActiveTab] = useState<"ots" | "crear" | "trabajadores" | "bodega" | "marketplace">("ots");
   const [notification, setNotification] = useState<string | null>(null);
   const [customTasks, setCustomTasks] = useState<string[]>([]);
   const [newTaskInput, setNewTaskInput] = useState("");
@@ -587,6 +592,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           tecnico: "Sin Asignar",
           costoManoObra: 0,
           repuestosCost: 0,
+          costoTotal: 0,
           tokenSeguro: `token-${Date.now()}`
         };
         setOts([nuevaOT, ...ots]);

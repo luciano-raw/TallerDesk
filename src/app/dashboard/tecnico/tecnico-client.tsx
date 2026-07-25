@@ -150,7 +150,7 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
     let nextState = false;
     const nextOts = ots.map(o => {
       if (o.id === otId) {
-        const nextChecklist = o.checklist.map(item => {
+        const nextChecklist = o.checklist.map((item: any) => {
           if (item.id === itemId) {
             nextState = !item.completada;
             return { ...item, completada: nextState };
@@ -400,7 +400,7 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
             <div className="space-y-2">
               <span className="text-[10px] font-bold text-muted-foreground uppercase block">Checklist de Tareas:</span>
               <div className="space-y-1.5">
-                {activeOT.checklist.map((item) => (
+                {activeOT.checklist.map((item: any) => (
                   <label 
                     key={item.id} 
                     className="flex items-center gap-2.5 p-2 bg-muted/20 border border-border/55 rounded-lg text-xs hover:bg-muted/30 cursor-pointer"
@@ -437,7 +437,7 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2">
-                  {activeOT.fotos.map((f, i) => (
+                  {activeOT.fotos.map((f: any, i: number) => (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img key={i} src={f.url} alt={f.descripcion} className="w-full aspect-[4/3] object-cover rounded-lg border border-border" />
                   ))}
@@ -450,7 +450,7 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
               
               {activeOT.notasMecanico && activeOT.notasMecanico.length > 0 && (
                 <div className="space-y-1.5">
-                  {activeOT.notasMecanico.map((n, i) => (
+                  {activeOT.notasMecanico.map((n: string, i: number) => (
                     <div key={i} className="flex gap-2 p-2 bg-primary/5 rounded-lg border border-primary/10 text-xs">
                       <MessageSquare size={12} className="text-primary shrink-0 mt-0.5" />
                       <p className="leading-relaxed text-muted-foreground">{n}</p>
