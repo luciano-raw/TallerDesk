@@ -404,10 +404,53 @@ export async function createTallerWorker(data: {
   }
 }
 
-export async function getCurrentUserDbProfile() {
+export async function getCurrentUserDbProfile(clerkData: { id: string, email: string, fullName: string }) {
   try {
-    const dbUser = await syncUser();
-    if (!dbUser) return null;
+    const { id: clerkId, email, fullName } = clerkData;
+    const emailLower = email.toLowerCase().trim();
+    
+    // Buscar usuario
+    let dbUser = await prisma.usuario.findUnique({
+      where: { clerkId },
+      include: { taller: true }
+    });
+    
+    if (!dbUser) {
+      // Ver si existe por email
+      const existingEmail = await prisma.usuario.findUnique({
+        where: { email: emailLower }
+      });
+
+      if (existingEmail) {
+        dbUser = await prisma.usuario.update({
+          where: { id: existingEmail.id },
+          data: { clerkId },
+          include: { taller: true }
+        });
+      } else {
+        const isSuperAdmin = emailLower === "luciano.raw04@gmail.com";
+        dbUser = await prisma.usuario.create({
+          data: {
+            clerkId,
+            email: emailLower,
+            nombre: fullName || "Usuario sin nombre",
+            role: isSuperAdmin ? "SUPER_ADMIN" : "TALLER_TECNICO",
+          },
+          include: { taller: true }
+        });
+      }
+    } else {
+      // Forzar super admin
+      const isSuperAdmin = emailLower === "luciano.raw04@gmail.com";
+      if (isSuperAdmin && dbUser.role !== "SUPER_ADMIN") {
+        dbUser = await prisma.usuario.update({
+          where: { id: dbUser.id },
+          data: { role: "SUPER_ADMIN" },
+          include: { taller: true }
+        });
+      }
+    }
+    
     return {
       id: dbUser.id,
       nombre: dbUser.nombre,
@@ -728,9 +771,9 @@ export async function logOTAction(otId: string, accion: string, customUserName?:
     let userName = customUserName || "Sistema";
     
     if (!customUserName) {
-      const userProfile = await getCurrentUserDbProfile();
-      if (userProfile && userProfile.nombre) {
-        userName = userProfile.nombre;
+      const dbUser = await syncUser();
+      if (dbUser && dbUser.nombre) {
+        userName = dbUser.nombre;
       }
     }
 

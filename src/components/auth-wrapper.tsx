@@ -100,10 +100,19 @@ export function AuthProvider({ children, dbUser }: { children: React.ReactNode; 
   }, []);
 
   useEffect(() => {
-    if (!demoMode && isLoaded) {
+    if (!isLoaded) return; // Esperar a que Clerk cargue
+
+    if (!demoMode) {
       if (clerkUser) {
-        getCurrentUserDbProfile().then((profile) => {
+        getCurrentUserDbProfile({
+          id: clerkUser.id,
+          email: clerkUser.primaryEmailAddress?.emailAddress || "",
+          fullName: clerkUser.fullName || clerkUser.username || "Usuario",
+        }).then((profile) => {
           setDbProfile(profile);
+          setProfileLoading(false);
+        }).catch(() => {
+          setDbProfile(null);
           setProfileLoading(false);
         });
       } else {
@@ -131,6 +140,37 @@ export function AuthProvider({ children, dbUser }: { children: React.ReactNode; 
   }
 
   // Si no estamos en modo demo (Clerk + Supabase)
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-6 animate-spin">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
+        </div>
+        <h1 className="text-xl font-bold mb-2">Cargando perfil...</h1>
+      </div>
+    );
+  }
+
+  if (!demoMode && clerkUser && !dbProfile) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+        <div className="absolute top-4 right-4">
+          <OriginalClerkProvider>
+            <ClerkUserButton />
+          </OriginalClerkProvider>
+        </div>
+        <div className="w-16 h-16 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        </div>
+        <h1 className="text-2xl font-bold mb-2">Error de Sincronización</h1>
+        <p className="text-sm text-muted-foreground max-w-md mb-6 leading-relaxed">
+          No se pudo sincronizar tu cuenta con la base de datos.
+          <br/>Esto puede deberse a un error de conexión con Supabase o a un fallo en el servidor.
+        </p>
+      </div>
+    );
+  }
+
   const realRole = (!dbProfile?.tallerId && dbProfile?.role !== "SUPER_ADMIN") ? "PENDIENTE" : (dbProfile?.role || "TALLER_TECNICO");
   const realUser = dbProfile ? {
     id: dbProfile.id,
