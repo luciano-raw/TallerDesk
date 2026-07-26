@@ -356,7 +356,7 @@ export async function createTallerWorker(data: {
   tallerId: string;
   nombre: string;
   email: string;
-  role: "TALLER_TECNICO" | "TALLER_RECEP" | "TALLER_ADMIN";
+  role: "TALLER_TECNICO" | "TALLER_RECEP" | "TALLER_ADMIN" | "TALLER_JEFE";
 }) {
   try {
     const emailFormatted = data.email.toLowerCase().trim();
@@ -385,6 +385,18 @@ export async function createTallerWorker(data: {
       }
     }
 
+    // Definir permisos por defecto según rol
+    let defaultPermisos = {};
+    if (data.role === "TALLER_JEFE") {
+      defaultPermisos = { CAN_EDIT_OT: true, CAN_DELETE_OT: false, CAN_VIEW_BODEGA: true, CAN_MANAGE_BODEGA: true };
+    } else if (data.role === "TALLER_RECEP") {
+      defaultPermisos = { CAN_EDIT_OT: true, CAN_DELETE_OT: false, CAN_VIEW_BODEGA: false, CAN_MANAGE_BODEGA: false };
+    } else if (data.role === "TALLER_TECNICO") {
+      defaultPermisos = { CAN_EDIT_OT: false, CAN_DELETE_OT: false, CAN_VIEW_BODEGA: false, CAN_MANAGE_BODEGA: false };
+    } else if (data.role === "TALLER_ADMIN") {
+      defaultPermisos = { CAN_EDIT_OT: true, CAN_DELETE_OT: true, CAN_VIEW_BODEGA: true, CAN_MANAGE_BODEGA: true, CAN_MANAGE_WORKERS: true };
+    }
+
     // Crear el usuario pre-registrado en Supabase
     const nuevo = await prisma.usuario.create({
       data: {
@@ -392,7 +404,8 @@ export async function createTallerWorker(data: {
         email: emailFormatted,
         nombre: data.nombre,
         role: data.role,
-        tallerId: data.tallerId
+        tallerId: data.tallerId,
+        permisos: defaultPermisos
       }
     });
 
@@ -400,6 +413,20 @@ export async function createTallerWorker(data: {
     return { success: true, worker: nuevo };
   } catch (error: any) {
     console.error("Error al crear trabajador:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateUserPermissions(userId: string, permisos: any) {
+  try {
+    const actualizado = await prisma.usuario.update({
+      where: { id: userId },
+      data: { permisos }
+    });
+    revalidatePath("/dashboard");
+    return { success: true, worker: actualizado };
+  } catch (error: any) {
+    console.error("Error al actualizar permisos:", error);
     return { success: false, error: error.message };
   }
 }
@@ -456,6 +483,7 @@ export async function getCurrentUserDbProfile(clerkData: { id: string, email: st
       nombre: dbUser.nombre,
       email: dbUser.email,
       role: dbUser.role,
+      permisos: dbUser.permisos || {},
       tallerId: dbUser.tallerId,
       tallerName: dbUser.taller?.nombre || null,
       tallerSlug: dbUser.taller?.slug || null

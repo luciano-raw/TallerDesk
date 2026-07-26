@@ -21,6 +21,7 @@ type MockUser = {
   role: UserRole;
   tallerName: string;
   tallerSlug: string;
+  permisos: any;
 };
 
 const mockUsers: Record<UserRole, MockUser> = {
@@ -30,7 +31,8 @@ const mockUsers: Record<UserRole, MockUser> = {
     email: "luciano@tallerdesk.com",
     role: "SUPER_ADMIN",
     tallerName: "TallerDesk SaaS Platform",
-    tallerSlug: "system"
+    tallerSlug: "system",
+    permisos: {}
   },
   TALLER_ADMIN: {
     id: "user_taller_admin",
@@ -38,7 +40,8 @@ const mockUsers: Record<UserRole, MockUser> = {
     email: "carlos@tallerlosamigos.com",
     role: "TALLER_ADMIN",
     tallerName: "Taller Los Amigos",
-    tallerSlug: "taller-los-amigos"
+    tallerSlug: "taller-los-amigos",
+    permisos: { CAN_EDIT_OT: true, CAN_DELETE_OT: true, CAN_VIEW_BODEGA: true, CAN_MANAGE_BODEGA: true, CAN_MANAGE_WORKERS: true }
   },
   TALLER_JEFE: {
     id: "user_taller_jefe",
@@ -46,7 +49,8 @@ const mockUsers: Record<UserRole, MockUser> = {
     email: "roberto@tallerlosamigos.com",
     role: "TALLER_JEFE",
     tallerName: "Taller Los Amigos",
-    tallerSlug: "taller-los-amigos"
+    tallerSlug: "taller-los-amigos",
+    permisos: { CAN_EDIT_OT: true, CAN_DELETE_OT: false, CAN_VIEW_BODEGA: true, CAN_MANAGE_BODEGA: true }
   },
   TALLER_RECEP: {
     id: "user_taller_recep",
@@ -54,7 +58,8 @@ const mockUsers: Record<UserRole, MockUser> = {
     email: "marta@tallerlosamigos.com",
     role: "TALLER_RECEP",
     tallerName: "Taller Los Amigos",
-    tallerSlug: "taller-los-amigos"
+    tallerSlug: "taller-los-amigos",
+    permisos: { CAN_EDIT_OT: true, CAN_DELETE_OT: false, CAN_VIEW_BODEGA: false, CAN_MANAGE_BODEGA: false }
   },
   TALLER_TECNICO: {
     id: "user_taller_tecnico",
@@ -62,15 +67,17 @@ const mockUsers: Record<UserRole, MockUser> = {
     email: "alexis@tallerlosamigos.com",
     role: "TALLER_TECNICO",
     tallerName: "Taller Los Amigos",
-    tallerSlug: "taller-los-amigos"
+    tallerSlug: "taller-los-amigos",
+    permisos: { CAN_EDIT_OT: false, CAN_DELETE_OT: false, CAN_VIEW_BODEGA: false, CAN_MANAGE_BODEGA: false }
   },
   PENDIENTE: {
     id: "user_pendiente",
     fullName: "Usuario Nuevo",
     email: "nuevo@usuario.com",
     role: "PENDIENTE",
-    tallerName: "Sin Taller",
-    tallerSlug: ""
+    tallerName: "",
+    tallerSlug: "",
+    permisos: {}
   }
 };
 
@@ -177,6 +184,7 @@ export function AuthProvider({ children, dbUser }: { children: React.ReactNode; 
     fullName: dbProfile.nombre,
     email: dbProfile.email,
     role: realRole,
+    permisos: dbProfile.permisos || {},
     tallerName: dbProfile.tallerName || "Mi Taller Automotriz",
     tallerSlug: dbProfile.tallerSlug || "demo"
   } : null;
@@ -272,6 +280,7 @@ export function useSystemAuth() {
       isDemoMode: context.isDemoMode,
       role: context.role,
       setRole: context.setRole,
+      permisos: context.user?.permisos || {},
       tallerName: context.isDemoMode ? context.user.tallerName : (context.user?.tallerName || "Mi Taller Automotriz"),
       tallerSlug: context.isDemoMode ? context.user.tallerSlug : (context.user?.tallerSlug || "demo"),
       user: context.user
@@ -282,6 +291,7 @@ export function useSystemAuth() {
     isDemoMode: false,
     role: "TALLER_TECNICO" as UserRole,
     setRole: () => {},
+    permisos: {},
     tallerName: "Mi Taller Automotriz",
     tallerSlug: "demo",
     user: null

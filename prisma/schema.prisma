@@ -53,6 +53,7 @@ model Usuario {
   email     String   @unique
   nombre    String
   role      Role     @default(TALLER_TECNICO)
+  permisos  Json?    @default("{}") // Permisos personalizados por usuario
   
   tallerId  String?  // Nulo solo para SUPER_ADMIN global o cuentas pendientes de aprobación
   taller    Taller?  @relation(fields: [tallerId], references: [id])

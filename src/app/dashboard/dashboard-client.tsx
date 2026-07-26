@@ -19,7 +19,8 @@ import {
   UserPlus,
   Copy,
   CheckCircle2,
-  Clock
+  Clock,
+  X
 } from "lucide-react";
 import { 
   getTallerOTs, 
@@ -43,7 +44,8 @@ import {
   addOTFoto, 
   upgradeToAdmin,
   searchMarketplaceParts,
-  asociarRepuestoAOT
+  asociarRepuestoAOT,
+  updateUserPermissions
 } from "@/lib/db-actions";
 
 interface OT {
@@ -54,11 +56,13 @@ interface OT {
   cliente: string;
   status: "INGRESADO" | "DIAGNOSTICO" | "PRESUPUESTADO" | "EN_PROGRESO" | "CONTROL_CALIDAD" | "LISTO_ENTREGA" | "ENTREGADO";
   tecnico: string;
+  tecnicoId?: string;
   costoManoObra: number;
   repuestosCost: number;
   costoTotal: number;
   itemsPresupuesto?: any[];
-  tokenSeguro: string;
+  tokenSeguro?: string;
+  createdAt?: string;
 }
 
 const initialOTs: OT[] = [
@@ -73,7 +77,8 @@ const initialOTs: OT[] = [
     costoManoObra: 45000,
     repuestosCost: 25000,
     costoTotal: 70000,
-    tokenSeguro: "ot-demo-token"
+    tokenSeguro: "ot-demo-token",
+    createdAt: "2026-07-26T00:00:00Z"
   },
   {
     id: "ot_2",
@@ -99,12 +104,13 @@ const initialOTs: OT[] = [
     costoManoObra: 120000,
     repuestosCost: 180000,
     costoTotal: 300000,
-    tokenSeguro: "ranger-valle"
+    tokenSeguro: "ranger-valle",
+    createdAt: "2026-07-24T00:00:00Z"
   }
 ];
 
 export default function DashboardClient({ initialDbUser }: { initialDbUser: any }) {
-  const { role, user, tallerName, isDemoMode } = useSystemAuth();
+  const { role, user, permisos, tallerName, isDemoMode } = useSystemAuth();
   const [ots, setOts] = useState<OT[]>(initialOTs);
   const [dbMecanicos, setDbMecanicos] = useState<{ id: string; nombre: string }[]>([]);
   const [workers, setWorkers] = useState<any[]>([
@@ -159,7 +165,12 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
     }
   };
 
+  const [searchOTQuery, setSearchOTQuery] = useState("");
+  const [dateFilterStart, setDateFilterStart] = useState("");
+  const [dateFilterEnd, setDateFilterEnd] = useState("");
   const [activeManageCostsOT, setActiveManageCostsOT] = useState<any>(null);
+
+
   const [selectedDetailOT, setSelectedDetailOT] = useState<any>(null);
   const [newCostItemType, setNewCostItemType] = useState<"MANO_OBRA" | "REPUESTO">("MANO_OBRA");
   const [newCostItemDesc, setNewCostItemDesc] = useState("");
@@ -190,6 +201,36 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const [asociarOTPartId, setAsociarOTPartId] = useState<string | null>(null);
   const [asociarTargetOTId, setAsociarTargetOTId] = useState("");
   const [isAssociatingPart, setIsAssociatingPart] = useState(false);
+
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  const [editingWorkerPermissions, setEditingWorkerPermissions] = useState<any>(null);
+  const [newPermissions, setNewPermissions] = useState<any>({});
+  const [isSavingPermissions, setIsSavingPermissions] = useState(false);
+  
+  const handleOpenPermissions = (worker: any) => {
+    setEditingWorkerPermissions(worker);
+    setNewPermissions(worker.permisos || {});
+    setShowPermissionsModal(true);
+  };
+
+  const handleSavePermissions = async () => {
+    if (isDemoMode) {
+      triggerNotification("Permisos guardados (Demo)");
+      setShowPermissionsModal(false);
+      return;
+    }
+    setIsSavingPermissions(true);
+    const res = await updateUserPermissions(editingWorkerPermissions.id, newPermissions);
+    setIsSavingPermissions(false);
+    if (res.success) {
+      triggerNotification("Permisos actualizados correctamente");
+      const updatedWorkers = workers.map(w => w.id === editingWorkerPermissions.id ? { ...w, permisos: newPermissions } : w);
+      setWorkers(updatedWorkers);
+      setShowPermissionsModal(false);
+    } else {
+      triggerNotification("Error al guardar permisos: " + res.error);
+    }
+  };
 
   const handleOpenManageCosts = (ot: any) => {
     setActiveManageCostsOT(ot);
@@ -462,7 +503,8 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           bitacora: dbOt.bitacora || [],
           fotos: dbOt.fotos || [],
           checklist: dbOt.checklist || [],
-          tokenSeguro: dbOt.tokenSeguro
+          tokenSeguro: dbOt.tokenSeguro,
+          createdAt: dbOt.createdAt ? new Date(dbOt.createdAt).toISOString() : new Date().toISOString()
         };
       });
       setOts(mappedOts);
@@ -722,6 +764,45 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
     }
   };
 
+  const filteredOts = ots.filter(o => {
+    let matchesSearch = true;
+    if (searchOTQuery.trim()) {
+      const q = searchOTQuery.toLowerCase();
+      matchesSearch = 
+        o.codigo.toLowerCase().includes(q) || 
+        o.patente.toLowerCase().includes(q) || 
+        o.cliente.toLowerCase().includes(q) || 
+        o.vehiculo.toLowerCase().includes(q);
+    }
+    
+    let matchesDate = true;
+    if (dateFilterStart && o.createdAt) {
+      if (new Date(o.createdAt) < new Date(dateFilterStart)) matchesDate = false;
+    }
+    if (dateFilterEnd && o.createdAt) {
+      // Add one day to end date to make it inclusive for the entire day
+      const endD = new Date(dateFilterEnd);
+      endD.setDate(endD.getDate() + 1);
+      if (new Date(o.createdAt) >= endD) matchesDate = false;
+    }
+    
+    return matchesSearch && matchesDate;
+  });
+
+  const mechanicWorkloads = dbMecanicos.map(m => {
+    const activeOts = ots.filter(o => o.tecnicoId === m.id && o.status !== "ENTREGADO" && o.status !== "LISTO_ENTREGA").length;
+    let statusLabel = "Disponible";
+    let statusColor = "text-success bg-success/15";
+    if (activeOts >= 3) {
+      statusLabel = "Sobrecargado";
+      statusColor = "text-red-500 bg-red-500/15";
+    } else if (activeOts > 0) {
+      statusLabel = "Ocupado";
+      statusColor = "text-warning bg-warning/15";
+    }
+    return { ...m, activeOts, statusLabel, statusColor };
+  });
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       {notification && (
@@ -758,7 +839,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
               >
                 Nueva OT
               </button>
-              {(role === "TALLER_ADMIN" || role === "TALLER_JEFE") && (
+              {(role === "TALLER_ADMIN" || role === "TALLER_JEFE" || permisos?.CAN_VIEW_BODEGA) && (
                 <>
                   <button 
                     onClick={() => setActiveTab("bodega")} 
@@ -778,7 +859,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                   </button>
                 </>
               )}
-              {role === "TALLER_ADMIN" && (
+              {(role === "TALLER_ADMIN" || permisos?.CAN_MANAGE_WORKERS) && (
                 <button 
                   onClick={() => setActiveTab("trabajadores")} 
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
@@ -817,30 +898,52 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
               <Wrench size={20} className="text-success" />
             </div>
           </div>
-          <div className="bg-card border border-border p-4 rounded-xl">
-            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">Ingresos Estimados</p>
-            <div className="flex items-center justify-between">
-              <p className="text-2xl font-black">
-                ${ots.reduce((acc, o) => acc + (o.costoTotal ?? 0), 0).toLocaleString("es-CL")}
-              </p>
-              <DollarSign size={20} className="text-primary" />
+          {role !== "TALLER_RECEP" && (
+            <div className="bg-card border border-border p-4 rounded-xl">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">Ingresos Estimados</p>
+              <div className="flex items-center justify-between">
+                <p className="text-2xl font-black">
+                  ${ots.reduce((acc, o) => acc + (o.costoTotal ?? 0), 0).toLocaleString("es-CL")}
+                </p>
+                <DollarSign size={20} className="text-primary" />
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {activeTab === "ots" && (
-          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <h2 className="font-bold text-base">Órdenes de Trabajo Activas</h2>
-              <div className="relative w-full md:w-64">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input 
-                  type="text" 
-                  placeholder="Buscar patente o cliente..." 
-                  className="w-full h-8 pl-9 pr-3 rounded-lg border border-input bg-background text-xs focus:outline-none focus:border-primary"
-                />
+          <div className={`grid grid-cols-1 ${role === "TALLER_RECEP" ? "lg:grid-cols-4" : "lg:grid-cols-1"} gap-6`}>
+            <div className={`bg-card border border-border rounded-xl shadow-sm overflow-hidden ${role === "TALLER_RECEP" ? "lg:col-span-3" : ""}`}>
+              <div className="p-5 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <h2 className="font-bold text-base">Órdenes de Trabajo Activas</h2>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex gap-2 items-center text-xs">
+                    <input 
+                      type="date" 
+                      value={dateFilterStart}
+                      onChange={(e) => setDateFilterStart(e.target.value)}
+                      className="h-8 px-2 rounded-lg border border-input bg-background focus:outline-none focus:border-primary"
+                    />
+                    <span className="text-muted-foreground">a</span>
+                    <input 
+                      type="date" 
+                      value={dateFilterEnd}
+                      onChange={(e) => setDateFilterEnd(e.target.value)}
+                      className="h-8 px-2 rounded-lg border border-input bg-background focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div className="relative w-full sm:w-64">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input 
+                      type="text" 
+                      value={searchOTQuery}
+                      onChange={(e) => setSearchOTQuery(e.target.value)}
+                      placeholder="Buscar patente o cliente..." 
+                      className="w-full h-8 pl-9 pr-3 rounded-lg border border-input bg-background text-xs focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
@@ -857,7 +960,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {ots.map((o) => (
+                  {filteredOts.map((o) => (
                     <tr key={o.id} className="hover:bg-muted/35 transition-colors">
                       <td className="p-4 font-bold text-primary">
                         <button
@@ -933,7 +1036,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                             <ExternalLink size={11} />
                           </Link>
                           <button
-                            onClick={() => copyTrackingLink(o.tokenSeguro)}
+                            onClick={() => copyTrackingLink(o.tokenSeguro || "")}
                             className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground hover:underline font-semibold cursor-pointer border border-border bg-muted/40 hover:bg-muted px-2 py-0.5 rounded transition-all"
                           >
                             <Copy size={10} />
@@ -942,22 +1045,26 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                         </div>
                       </td>
                       <td className="p-4 text-right">
-                        {(role === "TALLER_ADMIN" || role === "TALLER_JEFE") && (
+                        {(role === "TALLER_ADMIN" || role === "TALLER_JEFE" || permisos?.CAN_EDIT_OT || permisos?.CAN_DELETE_OT) && (
                           <div className="flex flex-col items-end gap-1.5">
-                            <button
-                              onClick={() => handleOpenManageCosts(o)}
-                              className="px-2 py-1 rounded bg-primary text-white text-[10px] font-bold hover:bg-primary/95 cursor-pointer w-full text-center"
-                              title="Gestionar mano de obra, repuestos y presupuestos adicionales"
-                            >
-                              Gestionar Valores
-                            </button>
-                            <button
-                              onClick={() => handleDeleteOT(o.id, o.codigo)}
-                              className="px-2 py-1 rounded bg-red-600/10 text-red-500 hover:bg-red-600/20 text-[10px] font-bold transition-all cursor-pointer w-full text-center"
-                              title="Dar de Baja esta OT"
-                            >
-                              Dar de Baja
-                            </button>
+                            {(role === "TALLER_ADMIN" || role === "TALLER_JEFE" || permisos?.CAN_EDIT_OT) && (
+                              <button
+                                onClick={() => handleOpenManageCosts(o)}
+                                className="px-2 py-1 rounded bg-primary text-white text-[10px] font-bold hover:bg-primary/95 cursor-pointer w-full text-center"
+                                title="Gestionar mano de obra, repuestos y presupuestos adicionales"
+                              >
+                                Gestionar Valores
+                              </button>
+                            )}
+                            {(role === "TALLER_ADMIN" || role === "TALLER_JEFE" || permisos?.CAN_DELETE_OT) && (
+                              <button
+                                onClick={() => handleDeleteOT(o.id, o.codigo)}
+                                className="px-2 py-1 rounded bg-red-600/10 text-red-500 hover:bg-red-600/20 text-[10px] font-bold transition-all cursor-pointer w-full text-center"
+                                title="Dar de Baja esta OT"
+                              >
+                                Dar de Baja
+                              </button>
+                            )}
                           </div>
                         )}
                       </td>
@@ -966,6 +1073,38 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 </tbody>
               </table>
             </div>
+            </div>
+            
+            {/* PANEL LATERAL RECEPCIONISTA */}
+            {role === "TALLER_RECEP" && (
+              <div className="lg:col-span-1 space-y-4">
+                <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden p-5">
+                  <h3 className="font-bold text-sm mb-4 border-b border-border pb-2 flex items-center gap-2">
+                    <User size={14} className="text-primary"/>
+                    Disponibilidad Mecánicos
+                  </h3>
+                  <div className="space-y-3">
+                    {mechanicWorkloads.map(m => (
+                      <div key={m.id} className="flex flex-col gap-1.5 p-3 border border-border rounded-lg bg-muted/10">
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-xs">{m.nombre}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${m.statusColor}`}>
+                            {m.statusLabel}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground flex justify-between">
+                          <span>OTs en curso (No entregadas):</span>
+                          <span className="font-bold text-foreground">{m.activeOts}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {mechanicWorkloads.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-2">No hay mecánicos registrados.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1255,6 +1394,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                       <th className="p-4">Rol Asignado</th>
                       <th className="p-4">Estado Cuenta</th>
                       <th className="p-4">Fecha Registro</th>
+                      <th className="p-4 text-right">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -1279,6 +1419,15 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                         <td className="p-4 text-muted-foreground">
                           {w.createdAt ? new Date(w.createdAt).toISOString().split("T")[0] : "Reciente"}
                         </td>
+                        <td className="p-4 text-right">
+                          <button
+                            onClick={() => handleOpenPermissions(w)}
+                            className="h-8 px-3 rounded-lg bg-secondary text-secondary-foreground text-[10px] font-bold hover:bg-secondary/80 transition-all flex items-center gap-1 ml-auto"
+                          >
+                            <ShieldAlert size={12} />
+                            Permisos
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -1289,14 +1438,15 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         )}
 
         {/* PESTAÑA: BODEGA */}
-        {activeTab === "bodega" && (role === "TALLER_ADMIN" || role === "TALLER_JEFE") && (
+        {activeTab === "bodega" && (role === "TALLER_ADMIN" || role === "TALLER_JEFE" || permisos?.CAN_VIEW_BODEGA) && (
           <div className="space-y-6 animate-fade-in">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h2 className="font-bold text-lg">Bodega e Inventario del Taller</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">Controla las refacciones, insumos y niveles de stock local.</p>
               </div>
-              <button
+              {(role === "TALLER_ADMIN" || role === "TALLER_JEFE" || permisos?.CAN_MANAGE_BODEGA) && (
+                <button
                 onClick={() => {
                   setEditingBodegaItem(null);
                   setNewBodegaItem({ nombre: "", sku: "", tipo: "REPUESTO", cantidad: 0, precioUnitario: 0, ubicacion: "" });
@@ -1307,6 +1457,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 <Plus size={14} />
                 Agregar Ítem a Bodega
               </button>
+              )}
             </div>
 
             {/* Alertas de Stock Crítico */}
@@ -1356,7 +1507,9 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                       <th className="p-4 text-center">Cantidad en Stock</th>
                       <th className="p-4 text-right">Precio Unitario</th>
                       <th className="p-4">Ubicación</th>
-                      <th className="p-4 text-right">Acciones</th>
+                      {(role === "TALLER_ADMIN" || role === "TALLER_JEFE" || permisos?.CAN_MANAGE_BODEGA) && (
+                        <th className="p-4 text-right">Acciones</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -1398,7 +1551,8 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                           </td>
                           <td className="p-4 text-right font-extrabold">${item.precioUnitario.toLocaleString("es-CL")}</td>
                           <td className="p-4 font-medium text-muted-foreground">{item.ubicacion || "Bodega General"}</td>
-                          <td className="p-4 text-right space-x-2">
+                          {(role === "TALLER_ADMIN" || role === "TALLER_JEFE" || permisos?.CAN_MANAGE_BODEGA) && (
+                            <td className="p-4 text-right space-x-2">
                             <button
                               onClick={() => {
                                 setEditingBodegaItem(item);
@@ -1423,6 +1577,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                               Eliminar
                             </button>
                           </td>
+                          )}
                         </tr>
                       ))}
                   </tbody>
@@ -1433,7 +1588,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         )}
 
         {/* PESTAÑA: MARKETPLACE */}
-        {activeTab === "marketplace" && (role === "TALLER_ADMIN" || role === "TALLER_JEFE") && (
+        {activeTab === "marketplace" && (role === "TALLER_ADMIN" || role === "TALLER_JEFE" || permisos?.CAN_VIEW_BODEGA) && (
           <div className="space-y-6 animate-fade-in">
             <div>
               <h2 className="font-bold text-lg">Marketplace de Repuestos Integrado</h2>
@@ -2101,6 +2256,81 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           </div>
         </div>
       )}
+      {/* MODAL DE PERMISOS */}
+      {showPermissionsModal && editingWorkerPermissions && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-background border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-slide-up">
+            <div className="p-5 border-b border-border flex justify-between items-center bg-card">
+              <h3 className="font-bold flex items-center gap-2">
+                <ShieldAlert className="text-primary" size={18} />
+                Permisos de {editingWorkerPermissions.nombre}
+              </h3>
+              <button 
+                onClick={() => setShowPermissionsModal(false)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-5 space-y-4">
+              <p className="text-xs text-muted-foreground">Configura los accesos adicionales para este usuario independiente de su rol ({editingWorkerPermissions.role.replace("TALLER_", "")}).</p>
+              
+              <div className="space-y-3">
+                <label className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card/50 hover:bg-muted/50 cursor-pointer transition-colors">
+                  <input type="checkbox" checked={newPermissions.CAN_EDIT_OT || false} onChange={(e) => setNewPermissions({...newPermissions, CAN_EDIT_OT: e.target.checked})} className="rounded border-input text-primary focus:ring-primary h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold">Modificar OTs</span>
+                    <span className="text-[10px] text-muted-foreground">Permite editar OTs creadas, cambiar estados y asignar costos.</span>
+                  </div>
+                </label>
+                
+                <label className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card/50 hover:bg-muted/50 cursor-pointer transition-colors">
+                  <input type="checkbox" checked={newPermissions.CAN_DELETE_OT || false} onChange={(e) => setNewPermissions({...newPermissions, CAN_DELETE_OT: e.target.checked})} className="rounded border-input text-primary focus:ring-primary h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold">Eliminar OTs</span>
+                    <span className="text-[10px] text-muted-foreground">Permite dar de baja OTs del sistema.</span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card/50 hover:bg-muted/50 cursor-pointer transition-colors">
+                  <input type="checkbox" checked={newPermissions.CAN_VIEW_BODEGA || false} onChange={(e) => setNewPermissions({...newPermissions, CAN_VIEW_BODEGA: e.target.checked})} className="rounded border-input text-primary focus:ring-primary h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold">Acceso a Bodega</span>
+                    <span className="text-[10px] text-muted-foreground">Ver inventario, buscar piezas en el marketplace.</span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card/50 hover:bg-muted/50 cursor-pointer transition-colors">
+                  <input type="checkbox" checked={newPermissions.CAN_MANAGE_BODEGA || false} onChange={(e) => setNewPermissions({...newPermissions, CAN_MANAGE_BODEGA: e.target.checked})} className="rounded border-input text-primary focus:ring-primary h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold">Administrar Bodega</span>
+                    <span className="text-[10px] text-muted-foreground">Agregar, editar o eliminar ítems del inventario.</span>
+                  </div>
+                </label>
+              </div>
+
+            </div>
+            
+            <div className="p-4 border-t border-border flex justify-end gap-3 bg-muted/20">
+              <button
+                onClick={() => setShowPermissionsModal(false)}
+                className="h-10 px-4 rounded-lg bg-secondary text-secondary-foreground text-xs font-bold hover:bg-secondary/80 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSavePermissions}
+                disabled={isSavingPermissions}
+                className="h-10 px-4 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/95 transition-all glow-green-sm flex items-center gap-2"
+              >
+                {isSavingPermissions ? "Guardando..." : "Guardar Permisos"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
