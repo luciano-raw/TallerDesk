@@ -12,7 +12,7 @@ const isDemo = () => {
 };
 
 // --- ESTRUCTURA MOCK PARA MODO DEMO ---
-export type UserRole = "SUPER_ADMIN" | "TALLER_ADMIN" | "TALLER_JEFE" | "TALLER_RECEP" | "TALLER_TECNICO";
+export type UserRole = "SUPER_ADMIN" | "TALLER_ADMIN" | "TALLER_JEFE" | "TALLER_RECEP" | "TALLER_TECNICO" | "PENDIENTE";
 
 type MockUser = {
   id: string;
@@ -63,6 +63,14 @@ const mockUsers: Record<UserRole, MockUser> = {
     role: "TALLER_TECNICO",
     tallerName: "Taller Los Amigos",
     tallerSlug: "taller-los-amigos"
+  },
+  PENDIENTE: {
+    id: "user_pendiente",
+    fullName: "Usuario Nuevo",
+    email: "nuevo@usuario.com",
+    role: "PENDIENTE",
+    tallerName: "Sin Taller",
+    tallerSlug: ""
   }
 };
 
@@ -123,7 +131,7 @@ export function AuthProvider({ children, dbUser }: { children: React.ReactNode; 
   }
 
   // Si no estamos en modo demo (Clerk + Supabase)
-  const realRole = dbProfile?.role || "TALLER_TECNICO";
+  const realRole = (!dbProfile?.tallerId && dbProfile?.role !== "SUPER_ADMIN") ? "PENDIENTE" : (dbProfile?.role || "TALLER_TECNICO");
   const realUser = dbProfile ? {
     id: dbProfile.id,
     fullName: dbProfile.nombre,

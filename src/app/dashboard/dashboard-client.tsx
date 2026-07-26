@@ -518,20 +518,25 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
             Ir a Vista Móvil de Técnico
             <ArrowRight size={14} />
           </Link>
-          <button
-            onClick={async () => {
-              const res = await upgradeToAdmin();
-              if (res.success) {
-                window.location.reload();
-              } else {
-                alert("Error al actualizar: " + res.error);
-              }
-            }}
-            className="flex justify-center items-center gap-2 px-6 h-11 rounded-lg border border-primary text-primary text-xs font-bold hover:bg-primary/5 transition-all"
-          >
-            Convertirme en Dueño de Taller (Dev)
-          </button>
         </div>
+      </div>
+    );
+  }
+
+  if (role === "PENDIENTE") {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+        <div className="absolute top-4 right-4">
+          <UserButton />
+        </div>
+        <div className="w-16 h-16 rounded-2xl bg-orange-500/10 text-orange-500 flex items-center justify-center mb-6 animate-pulse">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </div>
+        <h1 className="text-2xl font-bold mb-2">Cuenta Pendiente</h1>
+        <p className="text-sm text-muted-foreground max-w-md mb-6 leading-relaxed">
+          Tu cuenta está pendiente de aprobación o de asignación de rol.
+          <br/>Por favor espera a que un administrador te asigne a un taller para poder ingresar.
+        </p>
       </div>
     );
   }
