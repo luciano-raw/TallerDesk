@@ -775,18 +775,29 @@ export async function setPresupuestoAdicional(data: { otId: string; detalle: str
 
 export async function updatePresupuestoAdicionalEstado(otId: string, estado: "APROBADO" | "RECHAZADO") {
   try {
-    await prisma.ordenTrabajo.update({
+    const updated = await prisma.ordenTrabajo.update({
       where: { id: otId },
       data: {
         presupuestoEstado: estado
       }
     });
 
+    if (estado === "APROBADO" && updated.presupuestoDetalle) {
+      // Añadir el trabajo adicional como tarea a la checklist del mecánico
+      await prisma.tareaChecklist.create({
+        data: {
+          tarea: `Adicional Aprobado: ${updated.presupuestoDetalle}`,
+          ordenTrabajoId: otId
+        }
+      });
+    }
+
     await recalculateOTCosts(otId);
     await logOTAction(otId, `Cotización de trabajo adicional ${estado} por el cliente`, "Cliente");
 
     revalidatePath("/dashboard");
     revalidatePath("/seguimiento/[token]");
+    revalidatePath("/dashboard/tecnico");
     return { success: true };
   } catch (error: any) {
     console.error("Error al actualizar estado de presupuesto adicional:", error);
