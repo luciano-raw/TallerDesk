@@ -35,12 +35,22 @@ export async function syncUser() {
         // luciano.raw04@gmail.com es el SUPER_ADMIN global del sistema
         const isSuperAdmin = emailLower === "luciano.raw04@gmail.com";
 
+        // TEMPORAL: Todos los nuevos usuarios se crean como TALLER_ADMIN con un taller por defecto
+        const newTallerName = `Taller de ${clerkUser.firstName || "Dueño"}`;
+        const newTallerSlug = `taller-${Date.now()}`;
+
         dbUser = await prisma.usuario.create({
           data: {
             clerkId: clerkUser.id,
             email: emailLower,
             nombre: clerkUser.fullName || clerkUser.username || "Usuario sin nombre",
-            role: isSuperAdmin ? "SUPER_ADMIN" : "TALLER_TECNICO", // Por defecto técnico sin taller
+            role: isSuperAdmin ? "SUPER_ADMIN" : "TALLER_ADMIN",
+            taller: {
+              create: {
+                nombre: newTallerName,
+                slug: newTallerSlug
+              }
+            }
           },
           include: { taller: true }
         });

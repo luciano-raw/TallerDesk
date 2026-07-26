@@ -38,6 +38,10 @@ import {
   updateInventarioItem,
   deleteInventarioItem,
   adjustInventarioStock,
+  toggleTareaChecklist, 
+  updateOTDiagnostico, 
+  addOTFoto, 
+  upgradeToAdmin,
   searchMarketplaceParts,
   asociarRepuestoAOT
 } from "@/lib/db-actions";
@@ -496,6 +500,9 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   if (role === "TALLER_TECNICO") {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+        <div className="absolute top-4 right-4">
+          <UserButton />
+        </div>
         <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-6 animate-pulse">
           <Wrench size={32} />
         </div>
@@ -503,13 +510,28 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         <p className="text-sm text-muted-foreground max-w-md mb-6 leading-relaxed">
           Los mecánicos operan desde una interfaz especial optimizada para celulares dentro del taller.
         </p>
-        <Link
-          href="/dashboard/tecnico"
-          className="flex items-center gap-2 px-6 h-11 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/95 transition-all glow-green-sm"
-        >
-          Ir a Vista Móvil de Técnico
-          <ArrowRight size={14} />
-        </Link>
+        <div className="flex flex-col gap-3">
+          <Link
+            href="/dashboard/tecnico"
+            className="flex justify-center items-center gap-2 px-6 h-11 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/95 transition-all glow-green-sm"
+          >
+            Ir a Vista Móvil de Técnico
+            <ArrowRight size={14} />
+          </Link>
+          <button
+            onClick={async () => {
+              const res = await upgradeToAdmin();
+              if (res.success) {
+                window.location.reload();
+              } else {
+                alert("Error al actualizar: " + res.error);
+              }
+            }}
+            className="flex justify-center items-center gap-2 px-6 h-11 rounded-lg border border-primary text-primary text-xs font-bold hover:bg-primary/5 transition-all"
+          >
+            Convertirme en Dueño de Taller (Dev)
+          </button>
+        </div>
       </div>
     );
   }

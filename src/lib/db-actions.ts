@@ -2,6 +2,7 @@
 
 import { prisma } from "./prisma";
 import { revalidatePath } from "next/cache";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { syncUser } from "@/lib/auth-sync";
 
 // --- ACCIONES DE TALLERES (TENANTS) ---
@@ -905,6 +906,43 @@ export async function asociarRepuestoAOT(otId: string, repuestoNombre: string, m
     return { success: true };
   } catch (error: any) {
     console.error("Error al asociar repuesto de marketplace a OT:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function upgradeToAdmin() {
+  try {
+    const clerkUser = await currentUser();
+    if (!clerkUser) return { success: false, error: "No autenticado" };
+
+    const email = clerkUser.emailAddresses[0]?.emailAddress;
+    if (!email) return { success: false, error: "Sin email" };
+
+    let dbUser = await prisma.usuario.findUnique({ where: { clerkId: clerkUser.id } });
+    if (!dbUser) return { success: false, error: "Usuario no encontrado" };
+
+    let taller = await prisma.taller.findFirst({ where: { slug: 'taller-demo-propio' } });
+    if (!taller) {
+      taller = await prisma.taller.create({
+        data: {
+          nombre: `Taller de ${dbUser.nombre}`,
+          slug: `taller-demo-propio-${Date.now()}`
+        }
+      });
+    }
+
+    await prisma.usuario.update({
+      where: { id: dbUser.id },
+      data: {
+        role: "TALLER_ADMIN",
+        tallerId: taller.id
+      }
+    });
+
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error upgradeToAdmin:", error);
     return { success: false, error: error.message };
   }
 }
