@@ -36,44 +36,7 @@ interface TecnicoOT {
   fotos: { url: string; descripcion: string; fecha: string }[];
   notasMecanico: string[];
 }
-
-const initialTecnicoOTs: TecnicoOT[] = [
-  {
-    id: "ot_1",
-    codigo: "OT-1021",
-    patente: "AB-CD-12",
-    vehiculo: "Suzuki Swift 2021",
-    observaciones: "Mantención de 40.000 km. Revisar frenos traseros por chillido al frenar.",
-    status: "EN_PROGRESO",
-    checklist: [
-      { id: "c1", tarea: "Cambio de aceite y filtro", completada: true },
-      { id: "c2", tarea: "Inspección de pastillas de freno", completada: true },
-      { id: "c3", tarea: "Rectificado de discos traseros", completada: false },
-      { id: "c4", tarea: "Rotación de neumáticos", completada: false }
-    ],
-    fotos: [
-      { url: "https://images.unsplash.com/photo-1486006920555-c77dce18193b?q=80&w=300", descripcion: "Pastillas delanteras desgastadas al 85%", fecha: "10:35 AM" }
-    ],
-    notasMecanico: ["Se sugiere rectificar discos traseros ya que presentan rebaba."]
-  },
-  {
-    id: "ot_2",
-    codigo: "OT-1023",
-    patente: "GH-JK-54",
-    vehiculo: "Ford Ranger 2020",
-    observaciones: "Cambio de amortiguadores delanteros y alineación.",
-    status: "CONTROL_CALIDAD",
-    checklist: [
-      { id: "c5", tarea: "Desarmar amortiguación delantera", completada: true },
-      { id: "c6", tarea: "Instalar amortiguadores nuevos", completada: true },
-      { id: "c7", tarea: "Alineación y balanceo", completada: true }
-    ],
-    fotos: [
-      { url: "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?q=80&w=300", descripcion: "Amortiguador original reventado (fuga de aceite)", fecha: "09:12 AM" }
-    ],
-    notasMecanico: ["Amortiguadores instalados correctamente. Listo para pruebas de ruta."]
-  }
-];
+const initialTecnicoOTs: TecnicoOT[] = [];
 
 export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }) {
   const { role, user, isDemoMode } = useSystemAuth();
@@ -419,31 +382,7 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
               </div>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase">Fotos de Avance (Portal Cliente):</span>
-                <button
-                  onClick={() => handleSimulatePhoto(activeOT.id)}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded bg-primary text-white text-[10px] font-bold hover:bg-primary/95 shadow-sm"
-                >
-                  <Camera size={11} />
-                  Simular Foto
-                </button>
-              </div>
-
-              {activeOT.fotos.length === 0 ? (
-                <div className="border border-dashed border-border rounded-xl p-4 text-center text-[10px] text-muted-foreground">
-                  Sin fotografías registradas para el cliente.
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  {activeOT.fotos.map((f: any, i: number) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img key={i} src={f.url} alt={f.descripcion} className="w-full aspect-[4/3] object-cover rounded-lg border border-border" />
-                  ))}
-                </div>
-              )}
-            </div>
+{/* Fotos de Avance ocultas temporalmente */}
 
             <div className="space-y-2">
               <span className="text-[10px] font-bold text-muted-foreground uppercase block">Bitácora / Notas del Servicio:</span>

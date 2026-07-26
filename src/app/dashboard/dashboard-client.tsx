@@ -65,58 +65,13 @@ interface OT {
   createdAt?: string;
 }
 
-const initialOTs: OT[] = [
-  {
-    id: "ot_1",
-    codigo: "OT-1021",
-    patente: "AB-CD-12",
-    vehiculo: "Suzuki Swift 2021",
-    cliente: "Claudio Morales",
-    status: "EN_PROGRESO",
-    tecnico: "Alexis Sánchez (Mecánico)",
-    costoManoObra: 45000,
-    repuestosCost: 25000,
-    costoTotal: 70000,
-    tokenSeguro: "ot-demo-token",
-    createdAt: "2026-07-26T00:00:00Z"
-  },
-  {
-    id: "ot_2",
-    codigo: "OT-1022",
-    patente: "XY-99-88",
-    vehiculo: "Toyota RAV4 2018",
-    cliente: "Patricia Soto",
-    status: "DIAGNOSTICO",
-    tecnico: "Sin Asignar",
-    costoManoObra: 0,
-    repuestosCost: 0,
-    costoTotal: 0,
-    tokenSeguro: "patricia-rav4"
-  },
-  {
-    id: "ot_3",
-    codigo: "OT-1023",
-    patente: "GH-JK-54",
-    vehiculo: "Ford Ranger 2020",
-    cliente: "Agrícola del Valle",
-    status: "LISTO_ENTREGA",
-    tecnico: "Alexis Sánchez (Mecánico)",
-    costoManoObra: 120000,
-    repuestosCost: 180000,
-    costoTotal: 300000,
-    tokenSeguro: "ranger-valle",
-    createdAt: "2026-07-24T00:00:00Z"
-  }
-];
+const initialOTs: OT[] = [];
 
 export default function DashboardClient({ initialDbUser }: { initialDbUser: any }) {
   const { role, user, permisos, tallerName, isDemoMode } = useSystemAuth();
   const [ots, setOts] = useState<OT[]>(initialOTs);
   const [dbMecanicos, setDbMecanicos] = useState<{ id: string; nombre: string }[]>([]);
-  const [workers, setWorkers] = useState<any[]>([
-    { id: "w_1", nombre: "Alexis Sánchez", email: "alexis@taller.com", role: "TALLER_TECNICO", clerkId: "mock_c1", createdAt: "2026-04-12" },
-    { id: "w_2", nombre: "Mauricio Isla", email: "isla@taller.com", role: "TALLER_TECNICO", clerkId: "mock_c2", createdAt: "2026-04-15" }
-  ]);
+  const [workers, setWorkers] = useState<any[]>([]);
   const [newWorker, setNewWorker] = useState({ nombre: "", email: "", role: "TALLER_TECNICO" });
   const [formClient, setFormClient] = useState({ nombre: "", rut: "", telefono: "" });
   const [formVehiculo, setFormVehiculo] = useState({ patente: "", marca: "", modelo: "", kilometraje: "" });
@@ -2165,30 +2120,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                   )}
                 </div>
 
-                {/* 3. Fotos de Avance */}
-                <div className="space-y-2.5">
-                  <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Fotografías del Servicio</p>
-                  {(!selectedDetailOT.fotos || selectedDetailOT.fotos.length === 0) ? (
-                    <p className="text-xs text-muted-foreground italic text-center py-4 bg-muted/10 border border-border/60 rounded-xl">No hay fotografías cargadas para esta orden.</p>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-3 max-h-[180px] overflow-y-auto pr-1">
-                      {selectedDetailOT.fotos.map((foto: any) => (
-                        <div key={foto.id} className="bg-muted/30 border border-border rounded-xl overflow-hidden p-1">
-                          <img 
-                            src={foto.url} 
-                            alt={foto.descripcion} 
-                            className="w-full h-24 object-cover rounded-lg"
-                          />
-                          {foto.descripcion && (
-                            <p className="text-[10px] text-muted-foreground p-1 truncate leading-tight" title={foto.descripcion}>
-                              {foto.descripcion}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+{/* 3. Fotos de Avance (Oculto temporalmente) */}
 
               </div>
 

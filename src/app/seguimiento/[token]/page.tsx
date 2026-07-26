@@ -322,29 +322,7 @@ export default function ClienteSeguimientoPage() {
           </div>
         </div>
 
-        {/* FOTOGRAFIAS */}
-        {ot.fotos.length > 0 && (
-          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <Camera size={14} className="text-primary" />
-              Evidencia Fotográfica
-            </h3>
-
-            <div className="grid grid-cols-1 gap-2.5">
-              {ot.fotos.map((f: any, i: number) => (
-                <div key={i} className="border border-border rounded-lg overflow-hidden bg-muted">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={f.url} alt={f.descripcion} className="w-full aspect-[16/9] object-cover" />
-                  <div className="p-2.5 text-[10px] bg-card/85">
-                    <p className="font-bold text-foreground">{f.descripcion}</p>
-                    <span className="text-[8px] text-muted-foreground block mt-0.5">{f.fecha}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
+{/* Fotografias ocultas temporalmente */}
         {/* BITACORA DEL TALLER */}
         {ot.comentariosTaller.length > 0 && (
           <div className="bg-card border border-border rounded-xl p-4 space-y-3">
