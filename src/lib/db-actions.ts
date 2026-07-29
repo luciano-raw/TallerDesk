@@ -215,17 +215,8 @@ export async function createOT(data: {
     });
     const codigo = `OT-${1001 + totalOT}`;
 
-    // 4. Armar listado de tareas (obligatorias + adicionales)
-    const defaultTareas = [
-      "Inspección de niveles y fluidos",
-      "Revisión de frenos delanteros y traseros",
-      "Escaneo de códigos de falla (OBD-II)",
-      "Revisión visual de suspensión y dirección"
-    ];
-    const allTareas = [
-      ...defaultTareas,
-      ...(data.tareasAdicionales || []).filter(t => t.trim() !== "")
-    ];
+    // 4. Armar listado de tareas (desde el frontend)
+    const allTareas = (data.tareasAdicionales || []).filter(t => t.trim() !== "");
 
     // 5. Crear OT con checklist inicial
     const ot = await prisma.ordenTrabajo.create({

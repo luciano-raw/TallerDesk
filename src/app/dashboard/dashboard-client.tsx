@@ -78,7 +78,12 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const [formOT, setFormOT] = useState({ combustible: "50", observaciones: "" });
   const [activeTab, setActiveTab] = useState<"ots" | "crear" | "trabajadores" | "bodega" | "marketplace">("ots");
   const [notification, setNotification] = useState<string | null>(null);
-  const [customTasks, setCustomTasks] = useState<string[]>([]);
+  const [customTasks, setCustomTasks] = useState<string[]>([
+    "Inspección de niveles y fluidos",
+    "Revisión de frenos delanteros y traseros",
+    "Escaneo de códigos de falla (OBD-II)",
+    "Revisión visual de suspensión y dirección"
+  ]);
   const [newTaskInput, setNewTaskInput] = useState("");
 
   const handleAddCustomTask = () => {
@@ -459,6 +464,8 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           fotos: dbOt.fotos || [],
           checklist: dbOt.checklist || [],
           tokenSeguro: dbOt.tokenSeguro,
+          observaciones: dbOt.observaciones || "",
+          combustible: dbOt.combustible || 0,
           createdAt: dbOt.createdAt ? new Date(dbOt.createdAt).toISOString() : new Date().toISOString()
         };
       });
@@ -599,7 +606,12 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           setFormClient({ nombre: "", rut: "", telefono: "" });
           setFormVehiculo({ patente: "", marca: "", modelo: "", kilometraje: "" });
           setFormOT({ combustible: "50", observaciones: "" });
-          setCustomTasks([]);
+          setCustomTasks([
+            "Inspección de niveles y fluidos",
+            "Revisión de frenos delanteros y traseros",
+            "Escaneo de códigos de falla (OBD-II)",
+            "Revisión visual de suspensión y dirección"
+          ]);
           setNewTaskInput("");
         } else {
           triggerNotification(`Error al crear OT: ${res.error}`);
@@ -1198,21 +1210,11 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-primary mb-3 border-t border-border pt-4 flex items-center gap-1.5">
                   <ClipboardList size={14} />
-                  4. Checklist de Tareas (Obligatorias + Personalizadas)
+                  4. Checklist Inicial de Tareas
                 </h3>
                 <div className="space-y-4">
-                  <div className="bg-muted/30 p-3 rounded-lg border border-border">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase mb-2">Tareas Obligatorias Iniciales (Siempre incluidas):</p>
-                    <ul className="list-disc pl-4 text-xs text-muted-foreground space-y-1">
-                      <li>Inspección de niveles y fluidos</li>
-                      <li>Revisión de frenos delanteros y traseros</li>
-                      <li>Escaneo de códigos de falla (OBD-II)</li>
-                      <li>Revisión visual de suspensión y dirección</li>
-                    </ul>
-                  </div>
-
                   <div>
-                    <label className="block text-[11px] font-semibold mb-1">Agregar Tarea Personalizada</label>
+                    <label className="block text-[11px] font-semibold mb-1">Agregar Tarea al Checklist</label>
                     <div className="flex gap-2">
                       <input 
                         type="text" 
@@ -1233,7 +1235,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
 
                   {customTasks.length > 0 && (
                     <div className="space-y-1.5">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase">Tareas Personalizadas de esta Orden ({customTasks.length}):</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase">Tareas a realizar ({customTasks.length}):</p>
                       <div className="flex flex-wrap gap-1.5">
                         {customTasks.map((t, idx) => (
                           <div 
@@ -1718,7 +1720,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
 
               {customTasks.length > 0 && (
                 <div className="border-t border-border/50 pt-2">
-                  <p className="font-bold text-primary uppercase text-[9px] tracking-wider mb-1">Tareas Personalizadas ({customTasks.length})</p>
+                  <p className="font-bold text-primary uppercase text-[9px] tracking-wider mb-1">Checklist Inicial ({customTasks.length})</p>
                   <ul className="list-disc pl-4 space-y-0.5 text-muted-foreground">
                     {customTasks.map((t, i) => (
                       <li key={i}>{t}</li>
