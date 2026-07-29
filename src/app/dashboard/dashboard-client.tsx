@@ -1012,9 +1012,9 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                         </div>
                       </td>
                       <td className="p-4 text-right">
-                        {(role === "TALLER_ADMIN" || role === "TALLER_JEFE" || permisos?.CAN_EDIT_OT || permisos?.CAN_DELETE_OT) && (
+                        {(role === "TALLER_ADMIN" || role === "TALLER_JEFE" || role === "TALLER_RECEP" || permisos?.CAN_EDIT_OT || permisos?.CAN_DELETE_OT) && (
                           <div className="flex flex-col items-end gap-1.5">
-                            {(role === "TALLER_ADMIN" || role === "TALLER_JEFE" || permisos?.CAN_EDIT_OT) && (
+                            {(role === "TALLER_ADMIN" || role === "TALLER_JEFE" || role === "TALLER_RECEP" || permisos?.CAN_EDIT_OT) && (
                               <button
                                 onClick={() => handleOpenManageCosts(o)}
                                 className="px-2 py-1 rounded bg-primary text-white text-[10px] font-bold hover:bg-primary/95 cursor-pointer w-full text-center"
@@ -1023,7 +1023,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                                 Gestionar Valores
                               </button>
                             )}
-                            {(role === "TALLER_ADMIN" || role === "TALLER_JEFE" || permisos?.CAN_DELETE_OT) && (
+                            {(role === "TALLER_ADMIN" || role === "TALLER_JEFE" || role === "TALLER_RECEP" || permisos?.CAN_DELETE_OT) && (
                               <button
                                 onClick={() => handleDeleteOT(o.id, o.codigo)}
                                 className="px-2 py-1 rounded bg-red-600/10 text-red-500 hover:bg-red-600/20 text-[10px] font-bold transition-all cursor-pointer w-full text-center"
