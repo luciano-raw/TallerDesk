@@ -89,13 +89,6 @@ export default function Home() {
               Comenzar Ahora
               <ArrowRight size={16} />
             </a>
-            <Link 
-              href="/seguimiento/ot-demo-token" 
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 h-12 rounded-xl bg-card border border-border text-foreground font-semibold hover:bg-muted/80 transition-all hover:scale-[1.02]"
-            >
-              <Car size={16} className="text-primary" />
-              Ver Portal de Cliente Demo
-            </Link>
           </div>
         </div>
       </section>
