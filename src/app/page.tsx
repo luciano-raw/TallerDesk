@@ -298,7 +298,7 @@ export default function Home() {
                   <span className="text-muted-foreground text-[10px] uppercase block mt-1">+ IVA / mes</span>
                 </div>
                 <ul className="space-y-2.5 text-xs text-muted-foreground mb-8">
-                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> 1 sucursal y hasta 3 usuarios.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> 1 sucursal y hasta 5 usuarios.</li>
                   <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Órdenes de trabajo ilimitadas.</li>
                   <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Gestión de clientes y vehículos.</li>
                   <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Checklist, fotografías y estados de avance.</li>
@@ -327,7 +327,7 @@ export default function Home() {
                 </div>
                 <ul className="space-y-2.5 text-xs mb-8">
                   <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> <strong>Todo lo incluido en Esencial.</strong></li>
-                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Hasta 8 usuarios.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Hasta 10 usuarios.</li>
                   <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Gestión de trabajadores y asignación de trabajos.</li>
                   <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Inventario, repuestos y alertas de stock.</li>
                   <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Cotizaciones y aprobación del cliente.</li>
