@@ -261,76 +261,114 @@ export default function Home() {
             <p className="text-muted-foreground">Comienza gratis en nuestro entorno demo y escala según necesites.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
             {/* Plan 1 */}
             <div className="bg-card border border-border p-6 rounded-2xl flex flex-col justify-between">
               <div>
-                <h3 className="text-lg font-bold mb-1">Demo / Gratis</h3>
-                <p className="text-xs text-muted-foreground mb-4">Para pruebas y evaluaciones del sistema.</p>
+                <h3 className="text-lg font-bold mb-1">Prueba gratuita</h3>
+                <p className="text-xs text-muted-foreground mb-4">Conoce TallerDesk y prueba sus principales funciones antes de contratar.</p>
                 <div className="mb-6">
-                  <span className="text-3xl font-extrabold">$0</span>
-                  <span className="text-muted-foreground text-sm"> / mes</span>
+                  <span className="text-3xl font-extrabold text-green-500">Gratis</span>
+                  <span className="text-muted-foreground text-sm block mt-1">por 14 días</span>
                 </div>
                 <ul className="space-y-2.5 text-xs text-muted-foreground mb-8">
-                  <li className="flex items-center gap-2"><Check size={12} className="text-primary" /> Datos simulados interactivos</li>
-                  <li className="flex items-center gap-2"><Check size={12} className="text-primary" /> Roles del taller simulables</li>
-                  <li className="flex items-center gap-2"><Check size={12} className="text-primary" /> Sin límite de tiempo</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Acceso temporal al plan Pro.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Hasta 5 usuarios.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Hasta 20 órdenes de trabajo.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Clientes, vehículos e inventario.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Fotografías y seguimiento para clientes.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Sin tarjeta bancaria.</li>
                 </ul>
               </div>
               <Link 
                 href="/dashboard" 
-                className="w-full text-center py-2 px-4 rounded-lg bg-muted text-foreground text-xs font-bold hover:bg-muted/80 transition-colors"
+                className="w-full text-center py-2.5 px-4 rounded-lg bg-muted text-foreground text-xs font-bold hover:bg-muted/80 transition-colors"
               >
-                Probar Demo en Caliente
+                Probar gratis
               </Link>
             </div>
 
             {/* Plan 2 */}
-            <div className="bg-card border border-primary p-6 rounded-2xl flex flex-col justify-between relative scale-[1.02] shadow-xl shadow-primary/5 glow-purple">
-              <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-primary text-white text-[10px] font-bold uppercase tracking-wider">Más Popular</span>
+            <div className="bg-card border border-border p-6 rounded-2xl flex flex-col justify-between">
               <div>
-                <h3 className="text-lg font-bold mb-1">Taller Básico</h3>
-                <p className="text-xs text-muted-foreground mb-4">Perfecto para un taller en crecimiento.</p>
+                <h3 className="text-lg font-bold mb-1">Esencial</h3>
+                <p className="text-xs text-muted-foreground mb-4">Para talleres pequeños que necesitan organizar sus servicios y mejorar la atención al cliente.</p>
                 <div className="mb-6">
-                  <span className="text-3xl font-extrabold">$39,990</span>
-                  <span className="text-muted-foreground text-sm"> CLP/mes</span>
+                  <span className="text-3xl font-extrabold">$24.990</span>
+                  <span className="text-muted-foreground text-[10px] uppercase block mt-1">+ IVA / mes</span>
+                </div>
+                <ul className="space-y-2.5 text-xs text-muted-foreground mb-8">
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> 1 sucursal y hasta 3 usuarios.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Órdenes de trabajo ilimitadas.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Gestión de clientes y vehículos.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Checklist, fotografías y estados de avance.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Historial de servicios por vehículo.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Portal de seguimiento para clientes.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Órdenes de trabajo en PDF.</li>
+                </ul>
+              </div>
+              <a 
+                href="#contact" 
+                className="w-full text-center py-2.5 px-4 rounded-lg bg-muted text-foreground text-xs font-bold hover:bg-muted/80 transition-colors"
+              >
+                Comenzar con Esencial
+              </a>
+            </div>
+
+            {/* Plan 3 */}
+            <div className="bg-card border-2 border-primary p-6 rounded-2xl flex flex-col justify-between relative scale-[1.02] shadow-xl shadow-primary/5 glow-purple">
+              <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-primary text-white text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">Más Popular</span>
+              <div>
+                <h3 className="text-lg font-bold mb-1">Pro</h3>
+                <p className="text-xs text-muted-foreground mb-4">Para talleres que administran su equipo, inventario y operación completa.</p>
+                <div className="mb-6">
+                  <span className="text-3xl font-extrabold">$39.990</span>
+                  <span className="text-muted-foreground text-[10px] uppercase block mt-1">+ IVA / mes</span>
                 </div>
                 <ul className="space-y-2.5 text-xs mb-8">
-                  <li className="flex items-center gap-2"><Check size={12} className="text-primary" /> Hasta 5 mecánicos</li>
-                  <li className="flex items-center gap-2"><Check size={12} className="text-primary" /> Órdenes de trabajo ilimitadas</li>
-                  <li className="flex items-center gap-2"><Check size={12} className="text-primary" /> Portal de Seguimiento Cliente</li>
-                  <li className="flex items-center gap-2"><Check size={12} className="text-primary" /> 1 Taller registrado</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> <strong>Todo lo incluido en Esencial.</strong></li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Hasta 8 usuarios.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Gestión de trabajadores y asignación de trabajos.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Inventario, repuestos y alertas de stock.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Cotizaciones y aprobación del cliente.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Notificaciones automáticas.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Reportes de ventas y productividad.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Personalización con el logo del taller.</li>
                 </ul>
               </div>
               <a 
                 href="#contact" 
                 className="w-full text-center py-2.5 px-4 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/95 transition-all glow-green-sm"
               >
-                Habilitar Taller
+                Elegir Pro
               </a>
             </div>
 
-            {/* Plan 3 */}
+            {/* Plan 4 */}
             <div className="bg-card border border-border p-6 rounded-2xl flex flex-col justify-between">
               <div>
-                <h3 className="text-lg font-bold mb-1">Multi-Taller Pro</h3>
-                <p className="text-xs text-muted-foreground mb-4">Para redes de talleres o franquicias.</p>
+                <h3 className="text-lg font-bold mb-1">MultiTaller</h3>
+                <p className="text-xs text-muted-foreground mb-4">Para empresas que administran varias sucursales desde una sola plataforma.</p>
                 <div className="mb-6">
-                  <span className="text-3xl font-extrabold">$79,990</span>
-                  <span className="text-muted-foreground text-sm"> CLP/mes</span>
+                  <span className="text-3xl font-extrabold">$79.990</span>
+                  <span className="text-muted-foreground text-[10px] uppercase block mt-1">+ IVA / mes</span>
                 </div>
                 <ul className="space-y-2.5 text-xs text-muted-foreground mb-8">
-                  <li className="flex items-center gap-2"><Check size={12} className="text-primary" /> Mecánicos ilimitados</li>
-                  <li className="flex items-center gap-2"><Check size={12} className="text-primary" /> Multi-Taller (hasta 5 sucursales)</li>
-                  <li className="flex items-center gap-2"><Check size={12} className="text-primary" /> Módulo de Repuestos Centralizado</li>
-                  <li className="flex items-center gap-2"><Check size={12} className="text-primary" /> API de Proveedores Activada</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> <strong>Todo lo incluido en Pro.</strong></li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Hasta 3 sucursales y 20 usuarios.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Panel general de todas las sucursales.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Inventario centralizado y por sucursal.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Clientes e historial de vehículos compartidos.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Reportes consolidados y comparativos.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Personalización avanzada.</li>
+                  <li className="flex items-start gap-2"><Check size={12} className="text-primary shrink-0 mt-0.5" /> Configuración, capacitación y soporte prioritario.</li>
                 </ul>
               </div>
               <a 
                 href="#contact" 
-                className="w-full text-center py-2 px-4 rounded-lg bg-muted text-foreground text-xs font-bold hover:bg-muted/80 transition-colors"
+                className="w-full text-center py-2.5 px-4 rounded-lg bg-muted text-foreground text-xs font-bold hover:bg-muted/80 transition-colors"
               >
-                Cotizar Red
+                Elegir MultiTaller
               </a>
             </div>
           </div>
