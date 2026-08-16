@@ -97,8 +97,9 @@ model Vehiculo {
   
   tallerId    String
   taller      Taller   @relation(fields: [tallerId], references: [id])
-  
   ots         OrdenTrabajo[]
+  recomendaciones Recomendacion[]
+  garantias   Garantia[]
   createdAt   DateTime @default(now())
 
   @@unique([patente, tallerId]) // La patente es única por taller
@@ -111,6 +112,7 @@ model OrdenTrabajo {
   status        StatusOT     @default(INGRESADO)
   tokenSeguro   String       @unique @default(uuid()) // Token UUID de acceso seguro para el cliente
   combustible   Int          // Porcentaje de combustible (0 a 100)
+  kilometraje   Int          @default(0) // Kilometraje al momento de la OT
   observaciones String?      // Notas iniciales de recepción
   diagnostico   String?      // Diagnóstico del mecánico
   costoManoObra Decimal      @default(0.0)
@@ -133,6 +135,7 @@ model OrdenTrabajo {
   presupuestoEstado  String?      // PENDIENTE, APROBADO, RECHAZADO
   itemsPresupuesto   ItemPresupuesto[]
   bitacora           BitacoraAccion[]
+  garantias          Garantia[]
   
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
@@ -224,4 +227,34 @@ model InventarioItem {
   updatedAt      DateTime     @updatedAt
 
   @@unique([sku, tallerId])
+}
+
+// Trabajos sugeridos a futuro para el vehículo
+model Recomendacion {
+  id             String       @id @default(uuid())
+  descripcion    String
+  fechaSugerida  DateTime?    // Cuándo se debería hacer
+  estado         String       @default("PENDIENTE") // PENDIENTE, REALIZADA, RECHAZADA
+  
+  vehiculoId     String
+  vehiculo       Vehiculo     @relation(fields: [vehiculoId], references: [id], onDelete: Cascade)
+  
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+// Garantías emitidas por servicios prestados
+model Garantia {
+  id             String       @id @default(uuid())
+  descripcion    String
+  mesesValidez   Int          // 1, 3, 6, 12 meses...
+  fechaExpiracion DateTime
+  
+  vehiculoId     String
+  vehiculo       Vehiculo     @relation(fields: [vehiculoId], references: [id], onDelete: Cascade)
+  
+  ordenTrabajoId String
+  ordenTrabajo   OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Cascade)
+  
+  createdAt      DateTime     @default(now())
 }

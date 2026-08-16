@@ -224,6 +224,7 @@ export async function createOT(data: {
         codigo,
         status: "INGRESADO",
         combustible: data.combustible,
+        kilometraje: data.kilometraje,
         observaciones: data.observaciones,
         vehiculoId: vehiculo.id,
         tallerId: data.tallerId,
@@ -236,7 +237,7 @@ export async function createOT(data: {
     await logOTAction(ot.id, `Orden de Trabajo creada e ingresada con patente ${vehiculo.patente}`);
 
     revalidatePath("/dashboard");
-    return {
+    const resultData = {
       success: true,
       ot: {
         id: ot.id,
@@ -244,6 +245,7 @@ export async function createOT(data: {
         status: ot.status,
         tokenSeguro: ot.tokenSeguro,
         combustible: ot.combustible,
+        kilometraje: ot.kilometraje,
         observaciones: ot.observaciones,
         costoManoObra: Number(ot.costoManoObra),
         costoTotal: Number(ot.costoTotal),
@@ -254,6 +256,7 @@ export async function createOT(data: {
         updatedAt: ot.updatedAt.toISOString()
       }
     };
+    return JSON.parse(JSON.stringify(resultData));
   } catch (error: any) {
     console.error("Error al crear OT:", error);
     return { success: false, error: error.message };
@@ -525,7 +528,7 @@ export async function toggleTareaChecklist(id: string, completada: boolean) {
     });
     await logOTAction(tarea.ordenTrabajoId, `Tarea del checklist '${tarea.tarea}' marcada como ${completada ? "COMPLETADA" : "PENDIENTE"}`);
     revalidatePath("/dashboard/tecnico");
-    return { success: true, tarea };
+    return JSON.parse(JSON.stringify({ success: true, tarea }));
   } catch (error: any) {
     console.error("Error al cambiar estado de tarea:", error);
     return { success: false, error: error.message };
@@ -540,7 +543,7 @@ export async function updateOTDiagnostico(id: string, diagnostico: string) {
     });
     await logOTAction(id, `Diagnóstico técnico actualizado: "${diagnostico}"`);
     revalidatePath("/dashboard/tecnico");
-    return { success: true, ot };
+    return JSON.parse(JSON.stringify({ success: true, ot }));
   } catch (error: any) {
     console.error("Error al guardar diagnóstico de OT:", error);
     return { success: false, error: error.message };
@@ -560,7 +563,7 @@ export async function addOTFoto(data: { ordenTrabajoId: string; url: string; des
     await logOTAction(data.ordenTrabajoId, `Foto de progreso subida: "${data.descripcion || "Sin descripción"}"`);
     revalidatePath("/dashboard/tecnico");
     revalidatePath("/seguimiento/[token]");
-    return { success: true, foto };
+    return JSON.parse(JSON.stringify({ success: true, foto }));
   } catch (error: any) {
     console.error("Error al subir foto de OT:", error);
     return { success: false, error: error.message };
@@ -586,7 +589,7 @@ export async function getOTByToken(token: string) {
       }
     });
     if (!ot) return null;
-    return {
+    const resultData = {
       id: ot.id,
       codigo: ot.codigo,
       status: ot.status,
@@ -628,6 +631,7 @@ export async function getOTByToken(token: string) {
         createdAt: b.createdAt.toISOString()
       }))
     };
+    return JSON.parse(JSON.stringify(resultData));
   } catch (error) {
     console.error("Error al obtener OT por token:", error);
     return null;
@@ -1016,6 +1020,107 @@ export async function upgradeToAdmin() {
     return { success: true };
   } catch (error: any) {
     console.error("Error upgradeToAdmin:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function searchDirectorio(tallerId: string, query: string) {
+  try {
+    const q = query.trim().toLowerCase();
+    
+    // Buscar clientes por rutDni o nombre
+    const clientes = await prisma.cliente.findMany({
+      where: {
+        tallerId,
+        OR: [
+          { nombre: { contains: q, mode: "insensitive" } },
+          { rutDni: { contains: q, mode: "insensitive" } }
+        ]
+      },
+      include: { vehiculos: true },
+      take: 20
+    });
+
+    // Buscar vehiculos por patente
+    const vehiculos = await prisma.vehiculo.findMany({
+      where: {
+        tallerId,
+        OR: [
+          { patente: { contains: q, mode: "insensitive" } },
+          { marca: { contains: q, mode: "insensitive" } },
+          { modelo: { contains: q, mode: "insensitive" } }
+        ]
+      },
+      include: { cliente: true },
+      take: 20
+    });
+
+    return JSON.parse(JSON.stringify({ success: true, clientes, vehiculos }));
+  } catch (error: any) {
+    console.error("Error searchDirectorio:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getVehiculoHistory(vehiculoId: string) {
+  try {
+    const vehiculo = await prisma.vehiculo.findUnique({
+      where: { id: vehiculoId },
+      include: {
+        cliente: true,
+        ots: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            tecnico: true,
+            itemsPresupuesto: true,
+            repuestos: {
+              include: { repuesto: true }
+            }
+          }
+        },
+        recomendaciones: {
+          orderBy: { createdAt: "desc" }
+        },
+        garantias: {
+          orderBy: { createdAt: "desc" }
+        }
+      }
+    });
+
+    if (!vehiculo) return { success: false, error: "Vehículo no encontrado" };
+
+    return JSON.parse(JSON.stringify({ success: true, vehiculo }));
+  } catch (error: any) {
+    console.error("Error getVehiculoHistory:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function addRecomendacion(vehiculoId: string, descripcion: string, fechaSugerida?: string) {
+  try {
+    const rec = await prisma.recomendacion.create({
+      data: {
+        vehiculoId,
+        descripcion,
+        fechaSugerida: fechaSugerida ? new Date(fechaSugerida) : null,
+        estado: "PENDIENTE"
+      }
+    });
+    return JSON.parse(JSON.stringify({ success: true, recomendacion: rec }));
+  } catch (error: any) {
+    console.error("Error addRecomendacion:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function deleteRecomendacion(id: string) {
+  try {
+    await prisma.recomendacion.delete({
+      where: { id }
+    });
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error deleteRecomendacion:", error);
     return { success: false, error: error.message };
   }
 }

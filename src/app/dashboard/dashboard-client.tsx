@@ -47,6 +47,7 @@ import {
   asociarRepuestoAOT,
   updateUserPermissions
 } from "@/lib/db-actions";
+import DirectorioView from "./directorio-view";
 
 interface OT {
   id: string;
@@ -76,7 +77,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const [formClient, setFormClient] = useState({ nombre: "", rut: "", telefono: "" });
   const [formVehiculo, setFormVehiculo] = useState({ patente: "", marca: "", modelo: "", kilometraje: "" });
   const [formOT, setFormOT] = useState({ combustible: "50", observaciones: "" });
-  const [activeTab, setActiveTab] = useState<"ots" | "crear" | "trabajadores" | "bodega" | "marketplace">("ots");
+  const [activeTab, setActiveTab] = useState<"ots" | "crear" | "trabajadores" | "bodega" | "marketplace" | "directorio">("ots");
   const [notification, setNotification] = useState<string | null>(null);
   const [customTasks, setCustomTasks] = useState<string[]>([
     "Inspección de niveles y fluidos",
@@ -797,6 +798,14 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 }`}
               >
                 Órdenes de Trabajo
+              </button>
+              <button 
+                onClick={() => setActiveTab("directorio")} 
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  activeTab === "directorio" ? "bg-primary text-white" : "hover:bg-muted text-muted-foreground"
+                }`}
+              >
+                Directorio
               </button>
               <button 
                 onClick={() => setActiveTab("crear")} 
@@ -1685,6 +1694,11 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
               )
             )}
           </div>
+        )}
+
+        {/* DIRECTORIO TAB */}
+        {activeTab === "directorio" && (
+          <DirectorioView tallerId={initialDbUser?.tallerId || "demo-taller"} />
         )}
       </main>
 
