@@ -137,6 +137,10 @@ model OrdenTrabajo {
   bitacora           BitacoraAccion[]
   garantias          Garantia[]
   
+  // Nuevas relaciones para el modelo OT -> Trabajos
+  trabajos           TrabajoOT[]
+  trabajosAdicionales TrabajoAdicional[]
+  
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
@@ -151,6 +155,10 @@ model FotoOT {
   esRecepcion    Boolean      @default(false) // true para fotos de recepción, false para avances
   ordenTrabajoId String
   ordenTrabajo   OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id])
+  
+  trabajoId      String?
+  trabajo        TrabajoOT?   @relation(fields: [trabajoId], references: [id])
+  
   createdAt      DateTime     @default(now())
 }
 
@@ -190,6 +198,9 @@ model TareaChecklist {
   completada     Boolean      @default(false)
   ordenTrabajoId String
   ordenTrabajo   OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Cascade)
+  
+  trabajoId      String?
+  trabajo        TrabajoOT?   @relation(fields: [trabajoId], references: [id])
 }
 
 // Items de presupuesto (Mano de Obra o Repuestos) con descripción y valores reales
@@ -219,6 +230,7 @@ model InventarioItem {
   sku            String?
   tipo           String       // "REPUESTO" o "INSUMO"
   cantidad       Int          @default(0)
+  stockReservado Int          @default(0)  // Cantidad reservada en OTs activas
   precioUnitario Decimal      @default(0.0)
   ubicacion      String?      // Ubicación física (ej: Estante A, Cajón 3)
   tallerId       String
@@ -227,6 +239,45 @@ model InventarioItem {
   updatedAt      DateTime     @updatedAt
 
   @@unique([sku, tallerId])
+}
+
+// -------------------------------------------------------------
+// NUEVOS MODELOS: TRABAJOS Y COTIZACIONES
+// -------------------------------------------------------------
+
+// Trabajo específico dentro de una OT asignado a un mecánico
+model TrabajoOT {
+  id             String       @id @default(uuid())
+  titulo         String       // Ej: "Revisión de frenos"
+  estado         String       @default("PENDIENTE") // PENDIENTE, EN_PROGRESO, FINALIZADO
+  costoManoObra  Decimal      @default(0.0)
+  
+  ordenTrabajoId String
+  ordenTrabajo   OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Cascade)
+  
+  tecnicoId      String?
+  tecnico        Usuario?     @relation(fields: [tecnicoId], references: [id])
+  
+  tareas         TareaChecklist[]
+  fotos          FotoOT[]
+  
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+// Trabajos Adicionales que funcionan como Presupuestos Online para el Cliente
+model TrabajoAdicional {
+  id               String       @id @default(uuid())
+  titulo           String
+  descripcion      String?
+  monto            Decimal      @default(0.0)
+  estadoAprobacion String       @default("PENDIENTE_APROBACION") // PENDIENTE_APROBACION, APROBADO, RECHAZADO
+  
+  ordenTrabajoId   String
+  ordenTrabajo     OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Cascade)
+  
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 }
 
 // Trabajos sugeridos a futuro para el vehículo

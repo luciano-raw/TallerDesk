@@ -33,7 +33,6 @@ import {
   updateOTCosts,
   addPresupuestoItem,
   deletePresupuestoItem,
-  setPresupuestoAdicional,
   getInventarioItems,
   createInventarioItem,
   updateInventarioItem,
@@ -45,7 +44,12 @@ import {
   upgradeToAdmin,
   searchMarketplaceParts,
   asociarRepuestoAOT,
-  updateUserPermissions
+  updateUserPermissions,
+  createTrabajoOT,
+  assignTrabajoMecanico,
+  createTrabajoAdicional,
+  updateTrabajoAdicionalEstado,
+  asociarBodegaAOT
 } from "@/lib/db-actions";
 import DirectorioView from "./directorio-view";
 
@@ -62,6 +66,8 @@ interface OT {
   repuestosCost: number;
   costoTotal: number;
   itemsPresupuesto?: any[];
+  trabajos?: any[];
+  trabajosAdicionales?: any[];
   tokenSeguro?: string;
   createdAt?: string;
 }
@@ -264,14 +270,17 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
     setIsSavingAdicional(true);
     try {
       if (!isDemoMode) {
-        const res = await setPresupuestoAdicional({
-          otId: activeManageCostsOT.id,
-          detalle: newAdicionalDetalle,
-          monto: amount
-        });
+        const res = await createTrabajoAdicional(
+          activeManageCostsOT.id,
+          "Trabajo Adicional",
+          newAdicionalDetalle,
+          amount
+        );
         if (res.success) {
-          triggerNotification("🟢 Presupuesto adicional enviado al cliente.");
+          triggerNotification("🟢 Trabajo adicional enviado al cliente.");
           await fetchDbData(activeManageCostsOT.id);
+          setNewAdicionalDetalle("");
+          setNewAdicionalMonto("");
         } else {
           triggerNotification(`❌ Error: ${res.error}`);
         }
@@ -423,7 +432,6 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           triggerNotification(`❌ Error: ${res.error}`);
         }
       } else {
-        // Modo demo
         triggerNotification(`🟢 Asociado: "${part.nombre}" agregado a la OT (Demo).`);
         setAsociarOTPartId(null);
         setAsociarTargetOTId("");
@@ -432,6 +440,30 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
       triggerNotification(`❌ Error: ${err.message}`);
     } finally {
       setIsAssociatingPart(false);
+    }
+  };
+
+  const handleAsociarBodegaAOT = async (itemId: string, cantidad: number) => {
+    if (!asociarTargetOTId) {
+      triggerNotification("⚠️ Selecciona una Orden de Trabajo.");
+      return;
+    }
+    try {
+      if (!isDemoMode) {
+        const res = await asociarBodegaAOT(asociarTargetOTId, itemId, cantidad);
+        if (res.success) {
+          triggerNotification(`🟢 Repuesto de bodega agregado a la OT.`);
+          setAsociarOTPartId(null);
+          setAsociarTargetOTId("");
+          await fetchDbData();
+        } else {
+          triggerNotification(`❌ Error: ${res.error}`);
+        }
+      } else {
+        triggerNotification(`🟢 Repuesto de bodega agregado a la OT (Demo).`);
+      }
+    } catch (err: any) {
+      triggerNotification(`❌ Error: ${err.message}`);
     }
   };
 
@@ -461,6 +493,8 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           presupuestoMonto: Number(dbOt.presupuestoMonto || 0),
           presupuestoEstado: dbOt.presupuestoEstado,
           itemsPresupuesto: dbOt.itemsPresupuesto || [],
+          trabajos: dbOt.trabajos || [],
+          trabajosAdicionales: dbOt.trabajosAdicionales || [],
           bitacora: dbOt.bitacora || [],
           fotos: dbOt.fotos || [],
           checklist: dbOt.checklist || [],
@@ -668,22 +702,31 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
     }
   };
 
-  const handleAssignTecnico = async (id: string, tecnicoIdOrName: string) => {
+  const handleCreateTrabajo = async (otId: string, titulo: string, tecnicoId: string) => {
+    if (!titulo.trim()) return;
+    if (!isDemoMode) {
+      const res = await createTrabajoOT(otId, titulo, tecnicoId === "Sin Asignar" ? undefined : tecnicoId);
+      if (res.success) {
+        triggerNotification(`Trabajo creado en la OT.`);
+        fetchDbData();
+      } else {
+        triggerNotification(`Error: ${res.error}`);
+      }
+    } else {
+      triggerNotification(`Trabajo creado (Demo).`);
+    }
+  };
+
+  const handleAssignTrabajo = async (trabajoId: string, tecnicoIdOrName: string) => {
     if (!isDemoMode) {
       const actualId = tecnicoIdOrName === "Sin Asignar" ? null : tecnicoIdOrName;
-      const res = await assignOTMecanico(id, actualId);
+      const res = await assignTrabajoMecanico(trabajoId, actualId);
       if (res.success) {
-        triggerNotification(`Mecánico asignado en Supabase.`);
+        triggerNotification(`Mecánico asignado al trabajo.`);
         fetchDbData();
       }
     } else {
-      setOts(ots.map(o => {
-        if (o.id === id) {
-          triggerNotification(`Mecánico asignado a la orden ${o.codigo}.`);
-          return { ...o, tecnico: tecnicoIdOrName };
-        }
-        return o;
-      }));
+      triggerNotification(`Mecánico asignado (Demo).`);
     }
   };
 
@@ -953,25 +996,40 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                       <td className="p-4 text-muted-foreground font-medium">{o.cliente}</td>
                       <td className="p-4">
                         {(role === "TALLER_ADMIN" || role === "TALLER_JEFE") ? (
-                          <select
-                            value={(o as any).tecnicoId || o.tecnico}
-                            onChange={(e) => handleAssignTecnico(o.id, e.target.value)}
-                            className="bg-background border border-border rounded px-2 py-1 text-xs focus:outline-none focus:border-primary"
-                          >
-                            <option value="Sin Asignar">Sin Asignar</option>
-                            {!isDemoMode ? (
-                              dbMecanicos.map(m => (
-                                <option key={m.id} value={m.id}>{m.nombre}</option>
-                              ))
-                            ) : (
-                              <>
-                                <option value="Alexis Sánchez (Mecánico)">Alexis Sánchez</option>
-                                <option value="Mauricio Isla (Mecánico)">Mauricio Isla</option>
-                              </>
-                            )}
-                          </select>
+                          <div className="flex flex-col gap-1">
+                            {(o.trabajos || []).map((t: any) => (
+                              <div key={t.id} className="flex gap-1 items-center bg-muted/20 p-1 rounded">
+                                <span className="text-[10px] truncate max-w-[80px]" title={t.titulo}>{t.titulo}</span>
+                                <select
+                                  value={t.tecnicoId || "Sin Asignar"}
+                                  onChange={(e) => handleAssignTrabajo(t.id, e.target.value)}
+                                  className="bg-background border border-border rounded px-1 py-0.5 text-[10px] focus:outline-none focus:border-primary flex-1"
+                                >
+                                  <option value="Sin Asignar">Sin Asignar</option>
+                                  {!isDemoMode ? (
+                                    dbMecanicos.map(m => (
+                                      <option key={m.id} value={m.id}>{m.nombre}</option>
+                                    ))
+                                  ) : null}
+                                </select>
+                              </div>
+                            ))}
+                            <button
+                              onClick={() => {
+                                const titulo = prompt("Título del nuevo trabajo:");
+                                if (titulo) handleCreateTrabajo(o.id, titulo, "Sin Asignar");
+                              }}
+                              className="text-[10px] text-primary hover:underline text-left mt-1 font-semibold"
+                            >
+                              + Añadir Trabajo
+                            </button>
+                          </div>
                         ) : (
-                          <span className="text-muted-foreground font-medium">{o.tecnico}</span>
+                          <div className="flex flex-col gap-1">
+                            {(o.trabajos || []).map((t: any) => (
+                              <span key={t.id} className="text-[10px] text-muted-foreground font-medium">{t.titulo}: {t.tecnico?.nombre || "Sin Asignar"}</span>
+                            ))}
+                          </div>
                         )}
                       </td>
                       <td className="p-4">
@@ -2045,12 +2103,16 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                         .toLocaleString("es-CL")}
                     </p>
 
-                    {activeManageCostsOT.presupuestoEstado === "APROBADO" && (
-                      <>
-                        <p className="text-green-500 font-medium">Adicional Aprobado:</p>
-                        <p className="text-right font-bold text-green-500">${(activeManageCostsOT.presupuestoMonto || 0).toLocaleString("es-CL")}</p>
-                      </>
-                    )}
+                    {activeManageCostsOT.trabajosAdicionales?.map((ta: any) => (
+                      <React.Fragment key={ta.id}>
+                        <p className={`font-medium ${ta.estado === "APROBADO" ? "text-green-500" : ta.estado === "RECHAZADO" ? "text-red-500" : "text-amber-500"}`}>
+                          Adicional ({ta.estado}):
+                        </p>
+                        <p className={`text-right font-bold ${ta.estado === "APROBADO" ? "text-green-500" : ta.estado === "RECHAZADO" ? "text-red-500" : "text-amber-500"}`}>
+                          ${ta.monto.toLocaleString("es-CL")}
+                        </p>
+                      </React.Fragment>
+                    ))}
 
                     <div className="col-span-2 border-t border-border/80 my-1"></div>
 

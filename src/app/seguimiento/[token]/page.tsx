@@ -15,7 +15,7 @@ import {
   ThumbsDown,
   Sparkles
 } from "lucide-react";
-import { getOTByToken, updatePresupuestoAdicionalEstado } from "@/lib/db-actions";
+import { getOTByToken, updateTrabajoAdicionalEstado } from "@/lib/db-actions";
 
 // Estructura de datos simulada para la OT de seguimiento del cliente
 interface ClienteOT {
@@ -27,11 +27,16 @@ interface ClienteOT {
   combustible: number;
   costoManoObra: number;
   costoRepuestos: number;
-  presupuestoAdicional: {
+  trabajosAdicionales: {
+    id: string;
     detalle: string;
     monto: number;
     estado: "PENDIENTE" | "APROBADO" | "RECHAZADO";
-  } | null;
+  }[];
+  trabajos: {
+    titulo: string;
+    estado: "PENDIENTE" | "EN_PROGRESO" | "FINALIZADO";
+  }[];
   fotos: { url: string; descripcion: string; fecha: string }[];
   comentariosTaller: string[];
 }
@@ -45,11 +50,18 @@ const initialClienteOT: ClienteOT = {
   combustible: 45,
   costoManoObra: 45000,
   costoRepuestos: 25000,
-  presupuestoAdicional: {
-    detalle: "Pastillas de freno delanteras desgastadas (bajo el límite de seguridad de 2mm). Requiere cambio inmediato.",
-    monto: 35000,
-    estado: "PENDIENTE"
-  },
+  trabajosAdicionales: [
+    {
+      id: "ad_1",
+      detalle: "Pastillas de freno delanteras desgastadas (bajo el límite de seguridad de 2mm). Requiere cambio inmediato.",
+      monto: 35000,
+      estado: "PENDIENTE"
+    }
+  ],
+  trabajos: [
+    { titulo: "Revisión general", estado: "FINALIZADO" },
+    { titulo: "Cambio de pastillas", estado: "EN_PROGRESO" }
+  ],
   fotos: [
     { url: "https://images.unsplash.com/photo-1486006920555-c77dce18193b?q=80&w=350", descripcion: "Desgaste severo en pastilla de freno delantera izquierda", fecha: "Hoy, 10:35 AM" }
   ],
@@ -89,11 +101,16 @@ export default function ClienteSeguimientoPage() {
             costoRepuestos: data.itemsPresupuesto
               .filter((i: any) => i.tipo === "REPUESTO")
               .reduce((acc: number, curr: any) => acc + curr.monto, 0),
-            presupuestoAdicional: data.presupuestoDetalle ? {
-              detalle: data.presupuestoDetalle,
-              monto: data.presupuestoMonto,
-              estado: data.presupuestoEstado as "PENDIENTE" | "APROBADO" | "RECHAZADO"
-            } : null,
+            trabajosAdicionales: data.trabajosAdicionales ? data.trabajosAdicionales.map((ta: any) => ({
+              id: ta.id,
+              detalle: ta.descripcion,
+              monto: ta.monto,
+              estado: ta.estado
+            })) : [],
+            trabajos: data.trabajos ? data.trabajos.map((t: any) => ({
+              titulo: t.titulo,
+              estado: t.estado
+            })) : [],
             fotos: data.fotos,
             comentariosTaller: data.diagnostico ? [
               `Requerimiento inicial: ${data.observaciones}`,
@@ -111,22 +128,20 @@ export default function ClienteSeguimientoPage() {
     fetchOTData();
   }, [token]);
 
-  const handleAprobarPresupuesto = async () => {
-    if (!ot || !ot.id) return;
-    const res = await updatePresupuestoAdicionalEstado(ot.id, "APROBADO");
+  const handleAprobarPresupuesto = async (adicionalId: string) => {
+    const res = await updateTrabajoAdicionalEstado(adicionalId, "APROBADO");
     if (res.success) {
-      triggerNotification("🟢 Presupuesto adicional APROBADO. Informando al taller.");
+      triggerNotification("🟢 Trabajo adicional APROBADO. Informando al taller.");
       fetchOTData();
     } else {
       triggerNotification("❌ Error al aprobar el presupuesto.");
     }
   };
 
-  const handleRechazarPresupuesto = async () => {
-    if (!ot || !ot.id) return;
-    const res = await updatePresupuestoAdicionalEstado(ot.id, "RECHAZADO");
+  const handleRechazarPresupuesto = async (adicionalId: string) => {
+    const res = await updateTrabajoAdicionalEstado(adicionalId, "RECHAZADO");
     if (res.success) {
-      triggerNotification("🔴 Presupuesto adicional RECHAZADO. Se mantendrá el trabajo original.");
+      triggerNotification("🔴 Trabajo adicional RECHAZADO. Se mantendrá el trabajo original.");
       fetchOTData();
     } else {
       triggerNotification("❌ Error al rechazar el presupuesto.");
@@ -233,33 +248,33 @@ export default function ClienteSeguimientoPage() {
 
       <div className="flex-1 p-4 overflow-y-auto space-y-6">
         {/* INTERACCION DE PRESUPUESTO ADICIONAL */}
-        {ot.presupuestoAdicional && (
-          <div className="bg-card border border-border rounded-xl p-4 glow-green-sm space-y-3.5">
+        {ot.trabajosAdicionales && ot.trabajosAdicionales.map((ta: any) => (
+          <div key={ta.id} className="bg-card border border-border rounded-xl p-4 glow-green-sm space-y-3.5">
             <div className="flex items-center gap-2 border-b border-border pb-2">
               <HelpCircle size={16} className="text-yellow-500" />
               <h3 className="font-bold text-xs text-yellow-500">¿Aprobar Trabajo Adicional?</h3>
             </div>
 
             <p className="text-xs text-muted-foreground leading-relaxed">
-              {ot.presupuestoAdicional.detalle}
+              {ta.detalle}
             </p>
 
             <div className="flex items-center justify-between py-1 border-y border-border/40 my-2">
               <span className="text-[10px] text-muted-foreground">Costo de Reparación Adicional:</span>
-              <span className="font-extrabold text-sm text-primary">${ot.presupuestoAdicional.monto.toLocaleString("es-CL")} CLP</span>
+              <span className="font-extrabold text-sm text-primary">${ta.monto.toLocaleString("es-CL")} CLP</span>
             </div>
 
-            {ot.presupuestoAdicional.estado === "PENDIENTE" ? (
+            {ta.estado === "PENDIENTE" ? (
               <div className="grid grid-cols-2 gap-3 pt-1">
                 <button
-                  onClick={handleRechazarPresupuesto}
+                  onClick={() => handleRechazarPresupuesto(ta.id)}
                   className="flex items-center justify-center gap-1.5 h-9 rounded-lg border border-border hover:bg-muted text-xs font-semibold text-muted-foreground transition-all"
                 >
                   <ThumbsDown size={13} />
                   Rechazar
                 </button>
                 <button
-                  onClick={handleAprobarPresupuesto}
+                  onClick={() => handleAprobarPresupuesto(ta.id)}
                   className="flex items-center justify-center gap-1.5 h-9 rounded-lg bg-primary hover:bg-primary/95 text-white text-xs font-bold transition-all glow-green-sm"
                 >
                   <ThumbsUp size={13} />
@@ -268,18 +283,18 @@ export default function ClienteSeguimientoPage() {
               </div>
             ) : (
               <div className={`p-2.5 rounded-lg text-center text-xs font-bold ${
-                ot.presupuestoAdicional.estado === "APROBADO"
+                ta.estado === "APROBADO"
                   ? "bg-success/10 border border-success/30 text-success"
                   : "bg-destructive/10 border border-destructive/30 text-destructive"
               }`}>
-                {ot.presupuestoAdicional.estado === "APROBADO" 
+                {ta.estado === "APROBADO" 
                   ? "✓ Presupuesto Aceptado. Trabajo agendado." 
                   : "✗ Presupuesto Rechazado. No se realizará esta reparación."
                 }
               </div>
             )}
           </div>
-        )}
+        ))}
 
         {/* TIMELINE DE PROGRESO */}
         <div className="bg-card border border-border rounded-xl p-4 space-y-4">
@@ -320,6 +335,22 @@ export default function ClienteSeguimientoPage() {
               );
             })}
           </div>
+
+          {ot.trabajos && ot.trabajos.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-border">
+              <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Desglose de Trabajos Asignados</h4>
+              <div className="space-y-1.5">
+                {ot.trabajos.map((t: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between text-xs bg-muted/20 p-2 rounded border border-border/50">
+                    <span className="font-medium">{t.titulo}</span>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${t.estado === "FINALIZADO" ? "bg-success/10 text-success" : t.estado === "EN_PROGRESO" ? "bg-primary/10 text-primary" : "bg-amber-500/10 text-amber-500"}`}>
+                      {t.estado.replace("_", " ")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
 {/* Fotografias ocultas temporalmente */}

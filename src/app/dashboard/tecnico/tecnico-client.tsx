@@ -22,7 +22,8 @@ import {
   toggleTareaChecklist, 
   updateOTDiagnostico, 
   addOTFoto, 
-  updateOTStatus 
+  updateOTStatus,
+  updateTrabajoEstado
 } from "@/lib/db-actions";
 
 interface TecnicoOT {
@@ -35,6 +36,9 @@ interface TecnicoOT {
   checklist: { id: string; tarea: string; completada: boolean }[];
   fotos: { url: string; descripcion: string; fecha: string }[];
   notasMecanico: string[];
+  trabajoId: string;
+  trabajoTitulo: string;
+  trabajoEstado: "PENDIENTE" | "EN_PROGRESO" | "FINALIZADO";
 }
 const initialTecnicoOTs: TecnicoOT[] = [];
 
@@ -49,25 +53,34 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
     const tecnicoId = initialDbUser?.id || user?.id;
     if (tecnicoId) {
       const dbOts = await getTecnicoOTs(tecnicoId);
-      const mapped = dbOts.map((o: any) => ({
-        id: o.id,
-        codigo: o.codigo,
-        patente: o.vehiculo.patente,
-        vehiculo: `${o.vehiculo.marca} ${o.vehiculo.modelo}`,
-        observaciones: o.observaciones || "",
-        status: o.status,
-        checklist: o.checklist.map((c: any) => ({
-          id: c.id,
-          tarea: c.tarea,
-          completada: c.completada
-        })),
-        fotos: o.fotos.map((f: any) => ({
-          url: f.url,
-          descripcion: f.descripcion || "",
-          fecha: new Date(f.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        })),
-        notasMecanico: o.diagnostico ? [o.diagnostico] : []
-      }));
+      const mapped: TecnicoOT[] = [];
+      dbOts.forEach((o: any) => {
+        const misTrabajos = o.trabajos.filter((t: any) => t.tecnicoId === tecnicoId);
+        misTrabajos.forEach((t: any) => {
+          mapped.push({
+            id: o.id,
+            codigo: o.codigo,
+            patente: o.vehiculo.patente,
+            vehiculo: `${o.vehiculo.marca} ${o.vehiculo.modelo}`,
+            observaciones: o.observaciones || "",
+            status: o.status,
+            checklist: o.checklist.map((c: any) => ({
+              id: c.id,
+              tarea: c.tarea,
+              completada: c.completada
+            })),
+            fotos: o.fotos.map((f: any) => ({
+              url: f.url,
+              descripcion: f.descripcion || "",
+              fecha: new Date(f.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            })),
+            notasMecanico: o.diagnostico ? [o.diagnostico] : [],
+            trabajoId: t.id,
+            trabajoTitulo: t.titulo,
+            trabajoEstado: t.estado
+          });
+        });
+      });
       setOts(mapped);
       
       // Mantener seleccionada la OT activa o seleccionar la primera
@@ -164,25 +177,25 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
     }
   };
 
-  const handleUpdateStatus = async (otId: string, newStatus: any) => {
+  const handleUpdateStatus = async (trabajoId: string, newStatus: any) => {
     const nextOts = ots.map(o => {
-      if (o.id === otId) {
-        return { ...o, status: newStatus };
+      if (o.trabajoId === trabajoId) {
+        return { ...o, trabajoEstado: newStatus };
       }
       return o;
     });
     setOts(nextOts);
 
     if (!isDemoMode) {
-      const res = await updateOTStatus(otId, newStatus);
+      const res = await updateTrabajoEstado(trabajoId, newStatus);
       if (res.success) {
-        triggerNotification(`Estado de OT cambiado a ${newStatus} en Supabase.`);
+        triggerNotification(`Estado de trabajo cambiado a ${newStatus} en Supabase.`);
         loadDbOTs();
       } else {
         triggerNotification(`Error: ${res.error}`);
       }
     } else {
-      triggerNotification(`Estado de OT actualizado a ${newStatus}.`);
+      triggerNotification(`Estado de trabajo actualizado a ${newStatus}.`);
     }
   };
 
@@ -230,7 +243,7 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
     }
   };
 
-  const activeOT = ots.find(o => o.id === selectedOtId);
+  const activeOT = ots.find(o => o.trabajoId === selectedOtId);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col md:max-w-md md:mx-auto md:border-x md:border-border md:shadow-2xl">
@@ -286,11 +299,11 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
 
             <div className="space-y-2.5">
               {ots.map((o) => {
-                const isSelected = selectedOtId === o.id;
+                const isSelected = selectedOtId === o.trabajoId;
                 return (
                   <button
-                    key={o.id}
-                    onClick={() => setSelectedOtId(o.id)}
+                    key={o.trabajoId}
+                    onClick={() => setSelectedOtId(o.trabajoId)}
                     className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between ${
                       isSelected 
                         ? "bg-card border-primary shadow-sm" 
@@ -314,13 +327,13 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
 
                     <div className="flex items-center gap-2">
                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                        o.status === "EN_PROGRESO" 
+                        o.trabajoEstado === "EN_PROGRESO" 
                           ? "bg-primary/10 text-primary" 
-                          : o.status === "CONTROL_CALIDAD" 
-                          ? "bg-yellow-500/10 text-yellow-500" 
-                          : "bg-success/10 text-success"
+                          : o.trabajoEstado === "FINALIZADO" 
+                          ? "bg-success/10 text-success" 
+                          : "bg-yellow-500/10 text-yellow-500"
                       }`}>
-                        {o.status.replace("_", " ")}
+                        {o.trabajoEstado.replace("_", " ")}
                       </span>
                       {isSelected ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                     </div>
@@ -339,18 +352,22 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
                 <p className="text-[11px] text-muted-foreground mt-0.5">{activeOT.vehiculo}</p>
               </div>
               <div className="flex flex-col items-end">
-                <span className="text-[10px] text-muted-foreground">Actualizar Estado:</span>
+                <span className="text-[10px] text-muted-foreground">Estado del Trabajo:</span>
                 <select
-                  value={activeOT.status}
-                  onChange={(e) => handleUpdateStatus(activeOT.id, e.target.value as any)}
+                  value={activeOT.trabajoEstado}
+                  onChange={(e) => handleUpdateStatus(activeOT.trabajoId, e.target.value as any)}
                   className="bg-background border border-border rounded px-2 py-0.5 text-[10px] font-bold focus:outline-none focus:border-primary mt-1"
                 >
-                  <option value="DIAGNOSTICO">DIAGNÓSTICO</option>
+                  <option value="PENDIENTE">PENDIENTE</option>
                   <option value="EN_PROGRESO">EN PROGRESO</option>
-                  <option value="CONTROL_CALIDAD">C. CALIDAD</option>
-                  <option value="LISTO_ENTREGA">LISTO ENTREGA</option>
+                  <option value="FINALIZADO">FINALIZADO</option>
                 </select>
               </div>
+            </div>
+            
+            <div className="bg-muted/10 p-2.5 rounded-lg border border-border">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase block mb-1">Trabajo Asignado:</span>
+              <p className="text-sm font-bold text-primary">{activeOT.trabajoTitulo}</p>
             </div>
 
             <div>
