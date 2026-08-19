@@ -217,7 +217,7 @@ export function useUser() {
           id: demoContext.user.id,
           fullName: demoContext.user.fullName,
           primaryEmailAddress: { emailAddress: demoContext.user.email },
-          publicMetadata: { role: demoContext.role },
+          publicMetadata: { role: demoContext.roles[0] },
           unsafeMetadata: { tallerSlug: demoContext.user.tallerSlug }
         }
       };

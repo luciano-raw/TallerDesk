@@ -124,8 +124,8 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
 
   const handleToggleChecklist = async (trabajoId: string, itemId: string) => {
     let nextState = false;
-    let autoNewStatus = null;
-    let currentStatus = null;
+    let autoNewStatus: string | null = null;
+    let currentStatus: string | null = null;
     let isAllComplete = true;
 
     const nextOts = ots.map(o => {

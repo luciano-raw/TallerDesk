@@ -499,7 +499,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
 
       const users = await getTallerUsuarios(tallerId);
       setWorkers(users);
-      const filteredMecanicos = users.filter(u => u.role === "TALLER_TECNICO");
+      const filteredMecanicos = users.filter(u => u.roles?.includes("TALLER_TECNICO"));
       setDbMecanicos(filteredMecanicos.map(u => ({ id: u.id, nombre: u.nombre })));
 
       // Cargar ítems de Bodega
@@ -808,7 +808,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           <div className="flex items-center gap-4">
             <span className="font-bold text-lg text-primary tracking-tight">{tallerName}</span>
             <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-bold text-primary capitalize">
-              Rol: {role.replace("TALLER_", "").toLowerCase()}
+              Roles: {roles.map(r => r.replace("TALLER_", "").toLowerCase()).join(", ")}
             </span>
           </div>
 
@@ -897,7 +897,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
               <Wrench size={20} className="text-success" />
             </div>
           </div>
-          {role !== "TALLER_RECEP" && (
+          {!roles.includes("TALLER_RECEP") && (
             <div className="bg-card border border-border p-4 rounded-xl">
               <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">Ingresos Estimados</p>
               <div className="flex items-center justify-between">
@@ -911,8 +911,8 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         </div>
 
         {activeTab === "ots" && (
-          <div className={`grid grid-cols-1 ${role === "TALLER_RECEP" ? "lg:grid-cols-4" : "lg:grid-cols-1"} gap-6`}>
-            <div className={`bg-card border border-border rounded-xl shadow-sm overflow-hidden ${role === "TALLER_RECEP" ? "lg:col-span-3" : ""}`}>
+          <div className={`grid grid-cols-1 ${roles.includes("TALLER_RECEP") ? "lg:grid-cols-4" : "lg:grid-cols-1"} gap-6`}>
+            <div className={`bg-card border border-border rounded-xl shadow-sm overflow-hidden ${roles.includes("TALLER_RECEP") ? "lg:col-span-3" : ""}`}>
               <div className="p-5 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <h2 className="font-bold text-base">Órdenes de Trabajo Activas</h2>
                 <div className="flex flex-col sm:flex-row gap-3">
@@ -975,7 +975,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                       </td>
                       <td className="p-4 text-muted-foreground font-medium">{o.cliente}</td>
                       <td className="p-4">
-                        {(role === "TALLER_ADMIN" || role === "TALLER_JEFE") ? (
+                        {(roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE")) ? (
                           <div className="flex flex-col gap-1">
                             {(o.trabajos || []).map((t: any) => (
                               <div key={t.id} className="flex gap-1 items-center bg-muted/20 p-1 rounded">
@@ -1056,9 +1056,9 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                         </div>
                       </td>
                       <td className="p-4 text-right">
-                        {(role === "TALLER_ADMIN" || role === "TALLER_JEFE" || role === "TALLER_RECEP" || permisos?.CAN_EDIT_OT || permisos?.CAN_DELETE_OT) && (
+                        {(roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE") || roles.includes("TALLER_RECEP") || permisos?.CAN_EDIT_OT || permisos?.CAN_DELETE_OT) && (
                           <div className="flex flex-col items-end gap-1.5">
-                            {(role === "TALLER_ADMIN" || role === "TALLER_JEFE" || role === "TALLER_RECEP" || permisos?.CAN_EDIT_OT) && (
+                            {(roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE") || roles.includes("TALLER_RECEP") || permisos?.CAN_EDIT_OT) && (
                               <button
                                 onClick={() => handleOpenManageCosts(o)}
                                 className="px-2 py-1 rounded bg-primary text-white text-[10px] font-bold hover:bg-primary/95 cursor-pointer w-full text-center"
@@ -1067,7 +1067,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                                 Gestionar Valores
                               </button>
                             )}
-                            {(role === "TALLER_ADMIN" || role === "TALLER_JEFE" || role === "TALLER_RECEP" || permisos?.CAN_DELETE_OT) && (
+                            {(roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE") || roles.includes("TALLER_RECEP") || permisos?.CAN_DELETE_OT) && (
                               <button
                                 onClick={() => handleDeleteOT(o.id, o.codigo)}
                                 className="px-2 py-1 rounded bg-red-600/10 text-red-500 hover:bg-red-600/20 text-[10px] font-bold transition-all cursor-pointer w-full text-center"
@@ -1087,7 +1087,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
             </div>
             
             {/* PANEL LATERAL RECEPCIONISTA */}
-            {role === "TALLER_RECEP" && (
+            {roles.includes("TALLER_RECEP") && (
               <div className="lg:col-span-1 space-y-4">
                 <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden p-5">
                   <h3 className="font-bold text-sm mb-4 border-b border-border pb-2 flex items-center gap-2">
@@ -1402,14 +1402,14 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         )}
 
         {/* PESTAÑA: BODEGA */}
-        {activeTab === "bodega" && (role === "TALLER_ADMIN" || role === "TALLER_JEFE" || permisos?.CAN_VIEW_BODEGA) && (
+        {activeTab === "bodega" && (roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE") || permisos?.CAN_VIEW_BODEGA) && (
           <div className="space-y-6 animate-fade-in">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h2 className="font-bold text-lg">Bodega e Inventario del Taller</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">Controla las refacciones, insumos y niveles de stock local.</p>
               </div>
-              {(role === "TALLER_ADMIN" || role === "TALLER_JEFE" || permisos?.CAN_MANAGE_BODEGA) && (
+              {(roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE") || permisos?.CAN_MANAGE_BODEGA) && (
                 <button
                 onClick={() => {
                   setEditingBodegaItem(null);
@@ -1471,7 +1471,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                       <th className="p-4 text-center">Cantidad en Stock</th>
                       <th className="p-4 text-right">Precio Unitario</th>
                       <th className="p-4">Ubicación</th>
-                      {(role === "TALLER_ADMIN" || role === "TALLER_JEFE" || permisos?.CAN_MANAGE_BODEGA) && (
+                      {(roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE") || permisos?.CAN_MANAGE_BODEGA) && (
                         <th className="p-4 text-right">Acciones</th>
                       )}
                     </tr>
@@ -1515,7 +1515,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                           </td>
                           <td className="p-4 text-right font-extrabold">${item.precioUnitario.toLocaleString("es-CL")}</td>
                           <td className="p-4 font-medium text-muted-foreground">{item.ubicacion || "Bodega General"}</td>
-                          {(role === "TALLER_ADMIN" || role === "TALLER_JEFE" || permisos?.CAN_MANAGE_BODEGA) && (
+                          {(roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE") || permisos?.CAN_MANAGE_BODEGA) && (
                             <td className="p-4 text-right space-x-2">
                             <button
                               onClick={() => {
@@ -1552,7 +1552,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         )}
 
         {/* PESTAÑA: MARKETPLACE */}
-        {activeTab === "marketplace" && (role === "TALLER_ADMIN" || role === "TALLER_JEFE" || permisos?.CAN_VIEW_BODEGA) && (
+        {activeTab === "marketplace" && (roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE") || permisos?.CAN_VIEW_BODEGA) && (
           <div className="space-y-6 animate-fade-in">
             <div>
               <h2 className="font-bold text-lg">Marketplace de Repuestos Integrado</h2>
@@ -2213,7 +2213,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
             </div>
             
             <div className="p-5 space-y-4">
-              <p className="text-xs text-muted-foreground">Configura los accesos adicionales para este usuario independiente de su rol ({editingWorkerPermissions.role.replace("TALLER_", "")}).</p>
+              <p className="text-xs text-muted-foreground">Configura los accesos adicionales para este usuario independiente de su rol ({editingWorkerPermissions.roles[0].replace("TALLER_", "")}).</p>
               
               <div className="space-y-3">
                 <label className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card/50 hover:bg-muted/50 cursor-pointer transition-colors">
@@ -2279,7 +2279,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 onClick={() => setCreateTrabajoModal(null)}
                 className="w-8 h-8 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center hover:bg-secondary/80 transition-colors"
               >
-                <XIcon size={16} />
+                <X size={16} />
               </button>
             </div>
             
@@ -2317,7 +2317,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                       }}
                       className="text-red-500 hover:text-red-600 p-2"
                     >
-                      <XIcon size={14} />
+                      <X size={14} />
                     </button>
                   </div>
                 ))}
@@ -2352,3 +2352,4 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
     </div>
   );
 }
+

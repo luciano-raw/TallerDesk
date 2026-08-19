@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { Shield, Users, ClipboardList, PenTool, Home, Sun, Moon } from "lucide-react";
 
 export function DemoBar() {
-  const { isDemoMode, role, setRole, user } = useSystemAuth();
+  const { isDemoMode, roles, setRole, user } = useSystemAuth();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
 
@@ -81,7 +81,7 @@ export function DemoBar() {
       <div className="grid grid-cols-2 gap-2 mb-3">
         {rolesList.map((r) => {
           const Icon = r.icon;
-          const isSelected = role === r.value;
+          const isSelected = roles?.includes(r.value);
           return (
             <button
               key={r.value}

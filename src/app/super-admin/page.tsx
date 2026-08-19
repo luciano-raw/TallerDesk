@@ -9,7 +9,7 @@ export default async function SuperAdminPage() {
   const dbUser = await syncUser();
 
   // Guard de seguridad: si no está logueado o su rol no es SUPER_ADMIN global, redirigir a /dashboard
-  if (!dbUser || dbUser.role !== "SUPER_ADMIN") {
+  if (!dbUser || !dbUser.roles.includes("SUPER_ADMIN")) {
     redirect("/dashboard");
   }
 

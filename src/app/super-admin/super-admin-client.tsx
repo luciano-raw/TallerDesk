@@ -73,7 +73,7 @@ const mockUsuarios: UsuarioInfo[] = [
     id: "u_1",
     email: "luciano.raw04@gmail.com",
     nombre: "Luciano (Super Admin)",
-    role: "SUPER_ADMIN",
+    roles: ["SUPER_ADMIN"],
     tallerId: null,
     createdAt: "2026-03-10"
   },
@@ -81,7 +81,7 @@ const mockUsuarios: UsuarioInfo[] = [
     id: "u_2",
     email: "carlos@tallerlosamigos.com",
     nombre: "Don Carlos",
-    role: "TALLER_ADMIN",
+    roles: ["TALLER_ADMIN"],
     tallerId: "taller_1",
     taller: { nombre: "Taller Los Amigos" },
     createdAt: "2026-03-12"
@@ -277,7 +277,7 @@ export default function SuperAdminClient() {
     const actualTallerId = newTallerId === "null" ? null : newTallerId;
 
     if (!isDemoMode) {
-      const res = await updateUserRoleAndTaller(userId, targetUser.role, actualTallerId);
+      const res = await updateUserRoleAndTaller(userId, targetUser.roles, actualTallerId);
       if (res.success) {
         triggerNotification(`Taller de ${targetUser.nombre} actualizado en Supabase.`);
         loadDbData();
@@ -528,11 +528,11 @@ export default function SuperAdminClient() {
                     <td className="p-4 text-muted-foreground">{u.createdAt}</td>
                     <td className="p-4 text-right">
                       <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                        u.tallerId || u.role === "SUPER_ADMIN"
+                        u.tallerId || u.roles?.includes("SUPER_ADMIN")
                           ? "bg-success/15 text-success"
                           : "bg-warning/15 text-warning"
                       }`}>
-                        {u.role === "SUPER_ADMIN" ? (
+                        {u.roles?.includes("SUPER_ADMIN") ? (
                           <>
                             <ShieldCheck size={11} />
                             Super Admin

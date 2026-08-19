@@ -1040,7 +1040,7 @@ export async function upgradeToAdmin() {
     await prisma.usuario.update({
       where: { id: dbUser.id },
       data: {
-        role: "TALLER_ADMIN",
+        roles: ["TALLER_ADMIN"],
         tallerId: taller.id
       }
     });

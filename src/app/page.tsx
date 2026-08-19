@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 export default function Home() {
-  const { role } = useSystemAuth();
+  const { roles } = useSystemAuth();
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [contactInfo, setContactInfo] = useState({ name: "", email: "", workshop: "", message: "" });
 
