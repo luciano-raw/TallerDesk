@@ -16,12 +16,12 @@ export default async function DashboardPage() {
   }
 
   // 1. Redirección automática si es SUPER_ADMIN global del SaaS
-  if (dbUser.role === "SUPER_ADMIN") {
+  if (dbUser.roles?.includes("SUPER_ADMIN")) {
     redirect("/super-admin");
   }
 
-  // 2. Redirección automática si es un MECÁNICO / TÉCNICO del taller y ya está asignado
-  if (dbUser.role === "TALLER_TECNICO" && dbUser.tallerId) {
+  // 2. Redirección automática si es un MECÁNICO / TÉCNICO del taller y ya está asignado (y es su único rol)
+  if (dbUser.roles?.includes("TALLER_TECNICO") && dbUser.roles?.length === 1 && dbUser.tallerId) {
     redirect("/dashboard/tecnico");
   }
 

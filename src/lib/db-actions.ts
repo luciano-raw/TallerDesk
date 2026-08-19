@@ -83,12 +83,12 @@ export async function getUsuarios() {
   }
 }
 
-export async function updateUserRoleAndTaller(userId: string, role: "SUPER_ADMIN" | "TALLER_ADMIN" | "TALLER_RECEP" | "TALLER_TECNICO", tallerId: string | null) {
+export async function updateUserRoleAndTaller(userId: string, roles: ("SUPER_ADMIN" | "TALLER_ADMIN" | "TALLER_RECEP" | "TALLER_TECNICO" | "TALLER_JEFE")[], tallerId: string | null) {
   try {
     const actualizado = await prisma.usuario.update({
       where: { id: userId },
       data: { 
-        role, 
+        roles, 
         tallerId: tallerId || null 
       }
     });
@@ -219,10 +219,7 @@ export async function createOT(data: {
     });
     const codigo = `OT-${1001 + totalOT}`;
 
-    // 4. Armar listado de tareas (desde el frontend)
-    const allTareas = (data.tareasAdicionales || []).filter(t => t.trim() !== "");
-
-    // 5. Crear OT sin checklist directo, sino a traves de un TrabajoOT inicial
+    // 4. Crear OT sin checklist directo, sino a traves de un TrabajoOT inicial
     const ot = await prisma.ordenTrabajo.create({
       data: {
         codigo,
@@ -234,11 +231,8 @@ export async function createOT(data: {
         tallerId: data.tallerId,
         trabajos: {
           create: [{
-            titulo: "Revisión Inicial / Trabajos Solicitados",
-            estado: "PENDIENTE",
-            tareas: {
-              create: allTareas.map(t => ({ tarea: t }))
-            }
+            titulo: "Revisión Inicial",
+            estado: "PENDIENTE"
           }]
         }
       }
@@ -377,7 +371,7 @@ export async function createTallerWorker(data: {
   tallerId: string;
   nombre: string;
   email: string;
-  role: "TALLER_TECNICO" | "TALLER_RECEP" | "TALLER_ADMIN" | "TALLER_JEFE";
+  roles: ("TALLER_TECNICO" | "TALLER_RECEP" | "TALLER_ADMIN" | "TALLER_JEFE")[];
 }) {
   try {
     const emailFormatted = data.email.toLowerCase().trim();
@@ -398,7 +392,7 @@ export async function createTallerWorker(data: {
           where: { id: existing.id },
           data: {
             tallerId: data.tallerId,
-            role: data.role
+            roles: data.roles
           }
         });
         revalidatePath("/dashboard");
@@ -408,14 +402,12 @@ export async function createTallerWorker(data: {
 
     // Definir permisos por defecto según rol
     let defaultPermisos = {};
-    if (data.role === "TALLER_JEFE") {
-      defaultPermisos = { CAN_EDIT_OT: true, CAN_DELETE_OT: false, CAN_VIEW_BODEGA: true, CAN_MANAGE_BODEGA: true };
-    } else if (data.role === "TALLER_RECEP") {
+    if (data.roles.includes("TALLER_ADMIN") || data.roles.includes("TALLER_JEFE")) {
+      defaultPermisos = { CAN_EDIT_OT: true, CAN_DELETE_OT: data.roles.includes("TALLER_ADMIN"), CAN_VIEW_BODEGA: true, CAN_MANAGE_BODEGA: true, CAN_MANAGE_WORKERS: data.roles.includes("TALLER_ADMIN") };
+    } else if (data.roles.includes("TALLER_RECEP")) {
       defaultPermisos = { CAN_EDIT_OT: true, CAN_DELETE_OT: false, CAN_VIEW_BODEGA: false, CAN_MANAGE_BODEGA: false };
-    } else if (data.role === "TALLER_TECNICO") {
+    } else if (data.roles.includes("TALLER_TECNICO")) {
       defaultPermisos = { CAN_EDIT_OT: false, CAN_DELETE_OT: false, CAN_VIEW_BODEGA: false, CAN_MANAGE_BODEGA: false };
-    } else if (data.role === "TALLER_ADMIN") {
-      defaultPermisos = { CAN_EDIT_OT: true, CAN_DELETE_OT: true, CAN_VIEW_BODEGA: true, CAN_MANAGE_BODEGA: true, CAN_MANAGE_WORKERS: true };
     }
 
     // Crear el usuario pre-registrado en Supabase
@@ -424,7 +416,7 @@ export async function createTallerWorker(data: {
         clerkId: null, // Se vinculará automáticamente al iniciar sesión
         email: emailFormatted,
         nombre: data.nombre,
-        role: data.role,
+        roles: data.roles,
         tallerId: data.tallerId,
         permisos: defaultPermisos
       }
@@ -482,7 +474,7 @@ export async function getCurrentUserDbProfile(clerkData: { id: string, email: st
             clerkId,
             email: emailLower,
             nombre: fullName || "Usuario sin nombre",
-            role: isSuperAdmin ? "SUPER_ADMIN" : "TALLER_TECNICO",
+            roles: isSuperAdmin ? ["SUPER_ADMIN"] : ["TALLER_TECNICO"],
           },
           include: { taller: true }
         });
@@ -490,10 +482,10 @@ export async function getCurrentUserDbProfile(clerkData: { id: string, email: st
     } else {
       // Forzar super admin
       const isSuperAdmin = emailLower === "luciano.raw04@gmail.com";
-      if (isSuperAdmin && dbUser.role !== "SUPER_ADMIN") {
+      if (isSuperAdmin && (!dbUser.roles || !dbUser.roles.includes("SUPER_ADMIN"))) {
         dbUser = await prisma.usuario.update({
           where: { id: dbUser.id },
-          data: { role: "SUPER_ADMIN" },
+          data: { roles: ["SUPER_ADMIN"] },
           include: { taller: true }
         });
       }
@@ -503,7 +495,7 @@ export async function getCurrentUserDbProfile(clerkData: { id: string, email: st
       id: dbUser.id,
       nombre: dbUser.nombre,
       email: dbUser.email,
-      role: dbUser.role,
+      roles: dbUser.roles || [],
       permisos: dbUser.permisos || {},
       tallerId: dbUser.tallerId,
       tallerName: dbUser.taller?.nombre || null,
@@ -533,7 +525,7 @@ export async function getTecnicoOTs(tecnicoId: string) {
         fotos: {
           orderBy: { createdAt: "desc" }
         },
-        trabajos: { include: { tecnico: true } },
+        trabajos: { include: { tecnico: true, tareas: { orderBy: { tarea: "asc" } } } },
         trabajosAdicionales: { orderBy: { createdAt: "desc" } }
       },
       orderBy: { createdAt: "desc" }
@@ -619,7 +611,7 @@ export async function getOTByToken(token: string) {
         taller: true,
         itemsPresupuesto: true,
         bitacora: { orderBy: { createdAt: "desc" } },
-        trabajos: { include: { tecnico: true } },
+        trabajos: { include: { tecnico: true, tareas: true } },
         trabajosAdicionales: { orderBy: { createdAt: "desc" } }
       }
     });
@@ -1166,14 +1158,21 @@ export async function deleteRecomendacion(id: string) {
 // NUEVAS ACCIONES: TRABAJOS (MÚLTIPLES MECÁNICOS)
 // =========================================================
 
-export async function createTrabajoOT(ordenTrabajoId: string, titulo: string, tecnicoId?: string) {
+export async function createTrabajoOT(ordenTrabajoId: string, titulo: string, tecnicoId?: string, tareas?: string[]) {
   try {
     const trabajo = await prisma.trabajoOT.create({
       data: {
         ordenTrabajoId,
         titulo,
+        estado: "PENDIENTE",
         tecnicoId: tecnicoId || null,
-        estado: "PENDIENTE"
+        tareas: tareas && tareas.length > 0 ? {
+          create: tareas.map(t => ({ tarea: t, ordenTrabajoId }))
+        } : undefined
+      },
+      include: {
+        tecnico: true,
+        tareas: true
       }
     });
     revalidatePath("/dashboard");

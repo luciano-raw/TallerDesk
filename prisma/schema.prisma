@@ -9,11 +9,11 @@ generator client {
 }
 
 enum Role {
-  SUPER_ADMIN      // Administrador global de la plataforma (SaaS)
-  TALLER_ADMIN     // Administrador/Dueño del taller
-  TALLER_RECEP     // Recepcionista/Asesor de servicio
-  TALLER_TECNICO   // Mecánico/Técnico
-  TALLER_JEFE      // Jefe de Taller
+  SUPER_ADMIN // Administrador global de la plataforma (SaaS)
+  TALLER_ADMIN // Administrador/Dueño del taller
+  TALLER_RECEP // Recepcionista/Asesor de servicio
+  TALLER_TECNICO // Mecánico/Técnico
+  TALLER_JEFE // Jefe de Taller
 }
 
 enum StatusOT {
@@ -33,116 +33,117 @@ model Taller {
   slug            String   @unique // Ejemplo: "taller-los-amigos"
   activo          Boolean  @default(true)
   plan            String   @default("BASIC") // BASIC, PREMIUM, etc.
-  ubicacion       String?  // Dirección/Ubicación del taller
+  ubicacion       String? // Dirección/Ubicación del taller
   maxTrabajadores Int      @default(5) // Límite de mecánicos/trabajadores
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  usuarios    Usuario[]
-  clientes    Cliente[]
-  vehiculos   Vehiculo[]
-  ots         OrdenTrabajo[]
-  repuestos   Repuesto[]
-  inventario  InventarioItem[]
+  usuarios   Usuario[]
+  clientes   Cliente[]
+  vehiculos  Vehiculo[]
+  ots        OrdenTrabajo[]
+  repuestos  Repuesto[]
+  inventario InventarioItem[]
 }
 
 // Usuarios vinculados a Clerk y un taller respectivo (excepto Super Admins)
 model Usuario {
-  id        String   @id @default(uuid())
-  clerkId   String?  @unique // Nullable para permitir pre-registro mediante correo
-  email     String   @unique
-  nombre    String
-  role      Role     @default(TALLER_TECNICO)
-  permisos  Json?    @default("{}") // Permisos personalizados por usuario
-  
-  tallerId  String?  // Nulo solo para SUPER_ADMIN global o cuentas pendientes de aprobación
-  taller    Taller?  @relation(fields: [tallerId], references: [id])
-  
-  ots       OrdenTrabajo[] // OTs asignadas al técnico
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id       String  @id @default(uuid())
+  clerkId  String? @unique // Nullable para permitir pre-registro mediante correo
+  email    String  @unique
+  nombre   String
+  roles    Role[]  @default([TALLER_TECNICO])
+  permisos Json?   @default("{}") // Permisos personalizados por usuario
+
+  tallerId String? // Nulo solo para SUPER_ADMIN global o cuentas pendientes de aprobación
+  taller   Taller? @relation(fields: [tallerId], references: [id])
+
+  ots        OrdenTrabajo[] // OTs asignadas al técnico
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  trabajoOTs TrabajoOT[]
 }
 
 // Clientes del taller
 model Cliente {
-  id        String    @id @default(uuid())
+  id        String  @id @default(uuid())
   nombre    String
   rutDni    String
   telefono  String
   email     String?
   direccion String?
-  
-  tallerId  String
-  taller    Taller    @relation(fields: [tallerId], references: [id])
-  
+
+  tallerId String
+  taller   Taller @relation(fields: [tallerId], references: [id])
+
   vehiculos Vehiculo[]
-  createdAt DateTime  @default(now())
+  createdAt DateTime   @default(now())
 
   @@unique([rutDni, tallerId]) // El RUT es único dentro del mismo taller
 }
 
 // Vehículos ingresados en el taller
 model Vehiculo {
-  id          String   @id @default(uuid())
-  patente     String   // Placa o Patente
+  id          String  @id @default(uuid())
+  patente     String // Placa o Patente
   marca       String
   modelo      String
   anio        Int
   color       String?
   vin         String?
   kilometraje Int
-  
-  clienteId   String
-  cliente     Cliente  @relation(fields: [clienteId], references: [id])
-  
-  tallerId    String
-  taller      Taller   @relation(fields: [tallerId], references: [id])
-  ots         OrdenTrabajo[]
+
+  clienteId String
+  cliente   Cliente @relation(fields: [clienteId], references: [id])
+
+  tallerId        String
+  taller          Taller          @relation(fields: [tallerId], references: [id])
+  ots             OrdenTrabajo[]
   recomendaciones Recomendacion[]
-  garantias   Garantia[]
-  createdAt   DateTime @default(now())
+  garantias       Garantia[]
+  createdAt       DateTime        @default(now())
 
   @@unique([patente, tallerId]) // La patente es única por taller
 }
 
 // Órdenes de Trabajo (OT)
 model OrdenTrabajo {
-  id            String       @id @default(uuid())
-  codigo        String       // Ejemplo: OT-1001
-  status        StatusOT     @default(INGRESADO)
-  tokenSeguro   String       @unique @default(uuid()) // Token UUID de acceso seguro para el cliente
-  combustible   Int          // Porcentaje de combustible (0 a 100)
-  kilometraje   Int          @default(0) // Kilometraje al momento de la OT
-  observaciones String?      // Notas iniciales de recepción
-  diagnostico   String?      // Diagnóstico del mecánico
-  costoManoObra Decimal      @default(0.0)
-  costoTotal    Decimal      @default(0.0)
-  
-  vehiculoId    String
-  vehiculo      Vehiculo     @relation(fields: [vehiculoId], references: [id])
-  
-  tecnicoId     String?
-  tecnico       Usuario?     @relation(fields: [tecnicoId], references: [id])
-  
-  tallerId      String
-  taller        Taller       @relation(fields: [tallerId], references: [id])
-  
-  fotos         FotoOT[]
-  repuestos     RepuestoEnOT[]
-  checklist     TareaChecklist[]
+  id            String   @id @default(uuid())
+  codigo        String // Ejemplo: OT-1001
+  status        StatusOT @default(INGRESADO)
+  tokenSeguro   String   @unique @default(uuid()) // Token UUID de acceso seguro para el cliente
+  combustible   Int // Porcentaje de combustible (0 a 100)
+  kilometraje   Int      @default(0) // Kilometraje al momento de la OT
+  observaciones String? // Notas iniciales de recepción
+  diagnostico   String? // Diagnóstico del mecánico
+  costoManoObra Decimal  @default(0.0)
+  costoTotal    Decimal  @default(0.0)
+
+  vehiculoId String
+  vehiculo   Vehiculo @relation(fields: [vehiculoId], references: [id])
+
+  tecnicoId String?
+  tecnico   Usuario? @relation(fields: [tecnicoId], references: [id])
+
+  tallerId String
+  taller   Taller @relation(fields: [tallerId], references: [id])
+
+  fotos              FotoOT[]
+  repuestos          RepuestoEnOT[]
+  checklist          TareaChecklist[]
   presupuestoDetalle String?
-  presupuestoMonto   Decimal?     @default(0.0)
-  presupuestoEstado  String?      // PENDIENTE, APROBADO, RECHAZADO
+  presupuestoMonto   Decimal?          @default(0.0)
+  presupuestoEstado  String? // PENDIENTE, APROBADO, RECHAZADO
   itemsPresupuesto   ItemPresupuesto[]
   bitacora           BitacoraAccion[]
   garantias          Garantia[]
-  
+
   // Nuevas relaciones para el modelo OT -> Trabajos
-  trabajos           TrabajoOT[]
+  trabajos            TrabajoOT[]
   trabajosAdicionales TrabajoAdicional[]
-  
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([codigo, tallerId]) // El código es correlativo y único por taller
 }
@@ -155,27 +156,27 @@ model FotoOT {
   esRecepcion    Boolean      @default(false) // true para fotos de recepción, false para avances
   ordenTrabajoId String
   ordenTrabajo   OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id])
-  
-  trabajoId      String?
-  trabajo        TrabajoOT?   @relation(fields: [trabajoId], references: [id])
-  
-  createdAt      DateTime     @default(now())
+
+  trabajoId String?
+  trabajo   TrabajoOT? @relation(fields: [trabajoId], references: [id])
+
+  createdAt DateTime @default(now())
 }
 
 // Inventario de repuestos del taller
 model Repuesto {
-  id          String   @id @default(uuid())
-  codigo      String   // Código de parte
+  id          String  @id @default(uuid())
+  codigo      String // Código de parte
   nombre      String
   stock       Int
-  stockMinimo Int      @default(5)
+  stockMinimo Int     @default(5)
   precioCosto Decimal
   precioVenta Decimal
-  
-  tallerId    String
-  taller      Taller   @relation(fields: [tallerId], references: [id])
-  
-  ots         RepuestoEnOT[]
+
+  tallerId String
+  taller   Taller @relation(fields: [tallerId], references: [id])
+
+  ots RepuestoEnOT[]
 
   @@unique([codigo, tallerId]) // El código de repuesto es único por taller
 }
@@ -198,15 +199,15 @@ model TareaChecklist {
   completada     Boolean      @default(false)
   ordenTrabajoId String
   ordenTrabajo   OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Cascade)
-  
-  trabajoId      String?
-  trabajo        TrabajoOT?   @relation(fields: [trabajoId], references: [id])
+
+  trabajoId String?
+  trabajo   TrabajoOT? @relation(fields: [trabajoId], references: [id])
 }
 
 // Items de presupuesto (Mano de Obra o Repuestos) con descripción y valores reales
 model ItemPresupuesto {
   id             String       @id @default(uuid())
-  tipo           String       // "MANO_OBRA" o "REPUESTO"
+  tipo           String // "MANO_OBRA" o "REPUESTO"
   descripcion    String
   monto          Decimal
   ordenTrabajoId String
@@ -217,7 +218,7 @@ model ItemPresupuesto {
 model BitacoraAccion {
   id             String       @id @default(uuid())
   accion         String
-  usuarioNombre  String?      // Nombre del usuario que la realizó (ej: "Alexis Sánchez", "Cliente", "Sistema")
+  usuarioNombre  String? // Nombre del usuario que la realizó (ej: "Alexis Sánchez", "Cliente", "Sistema")
   ordenTrabajoId String
   ordenTrabajo   OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Cascade)
   createdAt      DateTime     @default(now())
@@ -225,18 +226,18 @@ model BitacoraAccion {
 
 // Ítems de la Bodega/Inventario local del taller
 model InventarioItem {
-  id             String       @id @default(uuid())
+  id             String   @id @default(uuid())
   nombre         String
   sku            String?
-  tipo           String       // "REPUESTO" o "INSUMO"
-  cantidad       Int          @default(0)
-  stockReservado Int          @default(0)  // Cantidad reservada en OTs activas
-  precioUnitario Decimal      @default(0.0)
-  ubicacion      String?      // Ubicación física (ej: Estante A, Cajón 3)
+  tipo           String // "REPUESTO" o "INSUMO"
+  cantidad       Int      @default(0)
+  stockReservado Int      @default(0) // Cantidad reservada en OTs activas
+  precioUnitario Decimal  @default(0.0)
+  ubicacion      String? // Ubicación física (ej: Estante A, Cajón 3)
   tallerId       String
-  taller         Taller       @relation(fields: [tallerId], references: [id], onDelete: Cascade)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  taller         Taller   @relation(fields: [tallerId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@unique([sku, tallerId])
 }
@@ -247,65 +248,65 @@ model InventarioItem {
 
 // Trabajo específico dentro de una OT asignado a un mecánico
 model TrabajoOT {
-  id             String       @id @default(uuid())
-  titulo         String       // Ej: "Revisión de frenos"
-  estado         String       @default("PENDIENTE") // PENDIENTE, EN_PROGRESO, FINALIZADO
-  costoManoObra  Decimal      @default(0.0)
-  
+  id            String  @id @default(uuid())
+  titulo        String // Ej: "Revisión de frenos"
+  estado        String  @default("PENDIENTE") // PENDIENTE, EN_PROGRESO, FINALIZADO
+  costoManoObra Decimal @default(0.0)
+
   ordenTrabajoId String
   ordenTrabajo   OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Cascade)
-  
-  tecnicoId      String?
-  tecnico        Usuario?     @relation(fields: [tecnicoId], references: [id])
-  
-  tareas         TareaChecklist[]
-  fotos          FotoOT[]
-  
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+
+  tecnicoId String?
+  tecnico   Usuario? @relation(fields: [tecnicoId], references: [id])
+
+  tareas TareaChecklist[]
+  fotos  FotoOT[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Trabajos Adicionales que funcionan como Presupuestos Online para el Cliente
 model TrabajoAdicional {
-  id               String       @id @default(uuid())
+  id               String  @id @default(uuid())
   titulo           String
   descripcion      String?
-  monto            Decimal      @default(0.0)
-  estadoAprobacion String       @default("PENDIENTE_APROBACION") // PENDIENTE_APROBACION, APROBADO, RECHAZADO
-  
-  ordenTrabajoId   String
-  ordenTrabajo     OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Cascade)
-  
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  monto            Decimal @default(0.0)
+  estadoAprobacion String  @default("PENDIENTE_APROBACION") // PENDIENTE_APROBACION, APROBADO, RECHAZADO
+
+  ordenTrabajoId String
+  ordenTrabajo   OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Trabajos sugeridos a futuro para el vehículo
 model Recomendacion {
-  id             String       @id @default(uuid())
-  descripcion    String
-  fechaSugerida  DateTime?    // Cuándo se debería hacer
-  estado         String       @default("PENDIENTE") // PENDIENTE, REALIZADA, RECHAZADA
-  
-  vehiculoId     String
-  vehiculo       Vehiculo     @relation(fields: [vehiculoId], references: [id], onDelete: Cascade)
-  
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id            String    @id @default(uuid())
+  descripcion   String
+  fechaSugerida DateTime? // Cuándo se debería hacer
+  estado        String    @default("PENDIENTE") // PENDIENTE, REALIZADA, RECHAZADA
+
+  vehiculoId String
+  vehiculo   Vehiculo @relation(fields: [vehiculoId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Garantías emitidas por servicios prestados
 model Garantia {
-  id             String       @id @default(uuid())
-  descripcion    String
-  mesesValidez   Int          // 1, 3, 6, 12 meses...
+  id              String   @id @default(uuid())
+  descripcion     String
+  mesesValidez    Int // 1, 3, 6, 12 meses...
   fechaExpiracion DateTime
-  
-  vehiculoId     String
-  vehiculo       Vehiculo     @relation(fields: [vehiculoId], references: [id], onDelete: Cascade)
-  
+
+  vehiculoId String
+  vehiculo   Vehiculo @relation(fields: [vehiculoId], references: [id], onDelete: Cascade)
+
   ordenTrabajoId String
   ordenTrabajo   OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Cascade)
-  
-  createdAt      DateTime     @default(now())
+
+  createdAt DateTime @default(now())
 }

@@ -9,7 +9,7 @@ export default async function TecnicoPage() {
   const dbUser = await syncUser();
 
   // Guard de seguridad: si no está logueado o no tiene taller operativo asignado, a /dashboard
-  if (!dbUser || (!dbUser.tallerId && dbUser.role !== "SUPER_ADMIN")) {
+  if (!dbUser || (!dbUser.tallerId && !dbUser.roles?.includes("SUPER_ADMIN"))) {
     redirect("/dashboard");
   }
 

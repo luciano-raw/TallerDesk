@@ -43,7 +43,7 @@ interface TecnicoOT {
 const initialTecnicoOTs: TecnicoOT[] = [];
 
 export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }) {
-  const { role, user, isDemoMode } = useSystemAuth();
+  const { roles, user, isDemoMode } = useSystemAuth();
   const [ots, setOts] = useState<any[]>([]);
   const [selectedOtId, setSelectedOtId] = useState<string | null>(null);
   const [nuevaNota, setNuevaNota] = useState("");
@@ -64,7 +64,7 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
             vehiculo: `${o.vehiculo.marca} ${o.vehiculo.modelo}`,
             observaciones: o.observaciones || "",
             status: o.status,
-            checklist: o.checklist.map((c: any) => ({
+            checklist: (t.tareas || []).map((c: any) => ({
               id: c.id,
               tarea: c.tarea,
               completada: c.completada
@@ -103,7 +103,7 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
     }
   }, [isDemoMode, initialDbUser, user]);
 
-  if (role !== "TALLER_TECNICO" && role !== "TALLER_ADMIN") {
+  if (!roles.includes("TALLER_TECNICO") && !roles.includes("TALLER_ADMIN") && !roles.includes("TALLER_JEFE")) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
         <div className="w-16 h-16 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center mb-6">
@@ -111,7 +111,7 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
         </div>
         <h1 className="text-2xl font-bold mb-2">Acceso Denegado</h1>
         <p className="text-sm text-muted-foreground max-w-md mb-6 leading-relaxed">
-          Esta vista móvil está adaptada exclusivamente para los **Mecánicos / Técnicos** dentro del taller. Tu rol actual es <span className="font-semibold text-primary capitalize">{role.replace("TALLER_", "").toLowerCase()}</span>.
+          Esta vista móvil está adaptada exclusivamente para los **Mecánicos / Técnicos** dentro del taller. Tu rol actual es <span className="font-semibold text-primary capitalize">{roles.length > 0 ? roles[0].replace("TALLER_", "").toLowerCase() : "NINGUNO"}</span>.
         </p>
       </div>
     );
@@ -122,10 +122,15 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const handleToggleChecklist = async (otId: string, itemId: string) => {
+  const handleToggleChecklist = async (trabajoId: string, itemId: string) => {
     let nextState = false;
+    let autoNewStatus = null;
+    let currentStatus = null;
+    let isAllComplete = true;
+
     const nextOts = ots.map(o => {
-      if (o.id === otId) {
+      if (o.trabajoId === trabajoId) {
+        currentStatus = o.trabajoEstado;
         const nextChecklist = o.checklist.map((item: any) => {
           if (item.id === itemId) {
             nextState = !item.completada;
@@ -133,7 +138,19 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
           }
           return item;
         });
-        return { ...o, checklist: nextChecklist };
+
+        isAllComplete = nextChecklist.every((item: any) => item.completada);
+        const hasSomeComplete = nextChecklist.some((item: any) => item.completada);
+
+        if (isAllComplete && currentStatus !== "FINALIZADO") {
+          autoNewStatus = "FINALIZADO";
+        } else if (!isAllComplete && hasSomeComplete && currentStatus !== "EN_PROGRESO") {
+          autoNewStatus = "EN_PROGRESO";
+        } else if (!hasSomeComplete && currentStatus !== "PENDIENTE") {
+          autoNewStatus = "PENDIENTE";
+        }
+
+        return { ...o, checklist: nextChecklist, trabajoEstado: autoNewStatus || currentStatus };
       }
       return o;
     });
@@ -143,7 +160,12 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
     if (!isDemoMode) {
       const res = await toggleTareaChecklist(itemId, nextState);
       if (res.success) {
-        triggerNotification("Checklist guardado en Supabase.");
+        if (autoNewStatus) {
+          await updateTrabajoEstado(trabajoId, autoNewStatus);
+          triggerNotification(`Checklist guardado. Estado actualizado a ${autoNewStatus}`);
+        } else {
+          triggerNotification("Checklist guardado.");
+        }
         loadDbOTs();
       } else {
         triggerNotification(`Error: ${res.error}`);
@@ -388,7 +410,7 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
                     <input 
                       type="checkbox" 
                       checked={item.completada}
-                      onChange={() => handleToggleChecklist(activeOT.id, item.id)}
+                      onChange={() => handleToggleChecklist(activeOT.trabajoId, item.id)}
                       className="rounded border-input text-primary focus:ring-primary w-4 h-4"
                     />
                     <span className={item.completada ? "line-through text-muted-foreground" : "text-foreground font-medium"}>

@@ -39,7 +39,7 @@ interface UsuarioInfo {
   id: string;
   email: string;
   nombre: string;
-  role: "SUPER_ADMIN" | "TALLER_ADMIN" | "TALLER_RECEP" | "TALLER_TECNICO";
+  roles: ("SUPER_ADMIN" | "TALLER_ADMIN" | "TALLER_JEFE" | "TALLER_RECEP" | "TALLER_TECNICO")[];
   tallerId: string | null;
   taller?: { nombre: string } | null;
   createdAt: string;
@@ -90,14 +90,14 @@ const mockUsuarios: UsuarioInfo[] = [
     id: "u_3",
     email: "pedro@mecanica.com",
     nombre: "Pedro Técnico",
-    role: "TALLER_TECNICO",
+    roles: ["TALLER_TECNICO"],
     tallerId: null,
     createdAt: "2026-07-13"
   }
 ];
 
 export default function SuperAdminClient() {
-  const { role, isDemoMode } = useSystemAuth();
+  const { roles, isDemoMode } = useSystemAuth();
   
   // Estados para Base de Datos (Supabase) y Mockups
   const [talleres, setTalleres] = useState<TallerInfo[]>(mockTalleres);
@@ -134,7 +134,7 @@ export default function SuperAdminClient() {
       id: u.id,
       email: u.email,
       nombre: u.nombre,
-      role: u.role,
+      roles: u.roles,
       tallerId: u.tallerId,
       taller: u.taller ? { nombre: u.taller.nombre } : null,
       createdAt: new Date(u.createdAt).toISOString().split("T")[0]
@@ -148,7 +148,7 @@ export default function SuperAdminClient() {
   }, [isDemoMode]);
 
   // Guard de Rol
-  if (role !== "SUPER_ADMIN") {
+  if (!roles.includes("SUPER_ADMIN")) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
         <div className="w-16 h-16 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center mb-6 animate-bounce">
@@ -156,7 +156,7 @@ export default function SuperAdminClient() {
         </div>
         <h1 className="text-2xl font-bold mb-2">Acceso Denegado</h1>
         <p className="text-sm text-muted-foreground max-w-md mb-6 leading-relaxed">
-          Esta zona está reservada para el **Administrador Global del SaaS**. Tu rol actual es <span className="font-semibold text-primary capitalize">{role.replace("TALLER_", "").toLowerCase()}</span>.
+          Esta zona está reservada para el **Administrador Global del SaaS**. Tu rol actual es <span className="font-semibold text-primary capitalize">{roles.length > 0 ? roles[0].replace("TALLER_", "").toLowerCase() : "NINGUNO"}</span>.
         </p>
         {isDemoMode && (
           <div className="bg-muted p-4 rounded-xl border border-border max-w-sm">
@@ -249,21 +249,21 @@ export default function SuperAdminClient() {
 
   // --- HANDLERS PARA USUARIOS Y PERMISOS ---
 
-  const handleUserRoleChange = async (userId: string, newRole: UsuarioInfo["role"]) => {
+  const handleUserRoleChange = async (userId: string, newRoles: UsuarioInfo["roles"]) => {
     const targetUser = usuarios.find(u => u.id === userId);
     if (!targetUser) return;
 
     if (!isDemoMode) {
-      const res = await updateUserRoleAndTaller(userId, newRole, targetUser.tallerId);
+      const res = await updateUserRoleAndTaller(userId, newRoles as any, targetUser.tallerId);
       if (res.success) {
-        triggerNotification(`Rol de ${targetUser.nombre} cambiado a ${newRole} en Supabase.`);
+        triggerNotification(`Roles de ${targetUser.nombre} cambiados en Supabase.`);
         loadDbData();
       }
     } else {
       setUsuarios(usuarios.map(u => {
         if (u.id === userId) {
-          triggerNotification(`Rol de ${u.nombre} cambiado a ${newRole}.`);
-          return { ...u, role: newRole };
+          triggerNotification(`Roles de ${u.nombre} actualizados.`);
+          return { ...u, roles: newRoles };
         }
         return u;
       }));
@@ -494,18 +494,23 @@ export default function SuperAdminClient() {
                     </td>
                     <td className="p-4">
                       <select
-                        value={u.role}
-                        onChange={(e) => handleUserRoleChange(u.id, e.target.value as any)}
-                        className="bg-background border border-border rounded px-2 py-1 text-xs focus:outline-none focus:border-primary font-medium"
+                        multiple
+                        value={u.roles || []}
+                        onChange={(e) => {
+                          const selected = Array.from(e.target.selectedOptions, option => option.value);
+                          handleUserRoleChange(u.id, selected as any);
+                        }}
+                        className="bg-background border border-border rounded px-2 py-1 text-xs focus:outline-none focus:border-primary font-medium h-16 overflow-y-auto"
                       >
                         <option value="SUPER_ADMIN">SUPER_ADMIN (SaaS)</option>
                         <option value="TALLER_ADMIN">TALLER_ADMIN (Dueño)</option>
                         <option value="TALLER_RECEP">TALLER_RECEP (Recepcionista)</option>
                         <option value="TALLER_TECNICO">TALLER_TECNICO (Mecánico)</option>
+                        <option value="TALLER_JEFE">TALLER_JEFE (Jefe de Taller)</option>
                       </select>
                     </td>
                     <td className="p-4">
-                      {u.role === "SUPER_ADMIN" ? (
+                      {u.roles?.includes("SUPER_ADMIN") ? (
                         <span className="text-muted-foreground italic text-[11px]">Acceso Global (SaaS)</span>
                       ) : (
                         <select

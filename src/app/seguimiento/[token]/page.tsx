@@ -36,6 +36,7 @@ interface ClienteOT {
   trabajos: {
     titulo: string;
     estado: "PENDIENTE" | "EN_PROGRESO" | "FINALIZADO";
+    tareas?: { id: string; tarea: string; completada: boolean }[];
   }[];
   fotos: { url: string; descripcion: string; fecha: string }[];
   comentariosTaller: string[];
@@ -109,7 +110,8 @@ export default function ClienteSeguimientoPage() {
             })) : [],
             trabajos: data.trabajos ? data.trabajos.map((t: any) => ({
               titulo: t.titulo,
-              estado: t.estado
+              estado: t.estado,
+              tareas: t.tareas || []
             })) : [],
             fotos: data.fotos,
             comentariosTaller: data.diagnostico ? [
@@ -340,14 +342,52 @@ export default function ClienteSeguimientoPage() {
             <div className="mt-4 pt-4 border-t border-border">
               <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Desglose de Trabajos Asignados</h4>
               <div className="space-y-1.5">
-                {ot.trabajos.map((t: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between text-xs bg-muted/20 p-2 rounded border border-border/50">
-                    <span className="font-medium">{t.titulo}</span>
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${t.estado === "FINALIZADO" ? "bg-success/10 text-success" : t.estado === "EN_PROGRESO" ? "bg-primary/10 text-primary" : "bg-amber-500/10 text-amber-500"}`}>
-                      {t.estado.replace("_", " ")}
-                    </span>
-                  </div>
-                ))}
+                {ot.trabajos.map((t: any, i: number) => {
+                  const totalTareas = t.tareas ? t.tareas.length : 0;
+                  const completadas = t.tareas ? t.tareas.filter((ta: any) => ta.completada).length : 0;
+                  const progress = totalTareas > 0 ? Math.round((completadas / totalTareas) * 100) : (t.estado === "FINALIZADO" ? 100 : 0);
+                  
+                  return (
+                    <div key={i} className="flex flex-col text-xs bg-muted/20 p-3 rounded-lg border border-border/50 gap-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm">{t.titulo}</span>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${t.estado === "FINALIZADO" ? "bg-success/10 text-success" : t.estado === "EN_PROGRESO" ? "bg-primary/10 text-primary" : "bg-amber-500/10 text-amber-500"}`}>
+                          {t.estado.replace("_", " ")}
+                        </span>
+                      </div>
+                      
+                      {totalTareas > 0 && (
+                        <div className="space-y-1 mt-1 border-t border-border/40 pt-2">
+                          <div className="flex justify-between text-[10px] text-muted-foreground font-semibold">
+                            <span>Progreso de tareas</span>
+                            <span>{completadas}/{totalTareas} ({progress}%)</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-muted overflow-hidden rounded-full">
+                            <div 
+                              className={`h-full transition-all duration-500 ${progress === 100 ? "bg-success" : "bg-primary"}`} 
+                              style={{ width: `${progress}%` }}
+                            ></div>
+                          </div>
+                          
+                          <div className="mt-2 space-y-1">
+                            {t.tareas.map((tarea: any, j: number) => (
+                              <div key={j} className="flex items-center gap-1.5 text-[10px]">
+                                {tarea.completada ? (
+                                  <CheckCircle2 size={12} className="text-success shrink-0" />
+                                ) : (
+                                  <div className="w-3 h-3 rounded-full border border-muted-foreground/40 shrink-0" />
+                                )}
+                                <span className={tarea.completada ? "line-through text-muted-foreground" : "text-foreground"}>
+                                  {tarea.tarea}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

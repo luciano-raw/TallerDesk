@@ -18,7 +18,7 @@ type MockUser = {
   id: string;
   fullName: string;
   email: string;
-  role: UserRole;
+  roles: UserRole[];
   tallerName: string;
   tallerSlug: string;
   permisos: any;
@@ -29,7 +29,7 @@ const mockUsers: Record<UserRole, MockUser> = {
     id: "user_super_admin",
     fullName: "Luciano (Super Admin)",
     email: "luciano@tallerdesk.com",
-    role: "SUPER_ADMIN",
+    roles: ["SUPER_ADMIN"],
     tallerName: "TallerDesk SaaS Platform",
     tallerSlug: "system",
     permisos: {}
@@ -38,7 +38,7 @@ const mockUsers: Record<UserRole, MockUser> = {
     id: "user_taller_admin",
     fullName: "Don Carlos (Admin de Taller)",
     email: "carlos@tallerlosamigos.com",
-    role: "TALLER_ADMIN",
+    roles: ["TALLER_ADMIN"],
     tallerName: "Taller Los Amigos",
     tallerSlug: "taller-los-amigos",
     permisos: { CAN_EDIT_OT: true, CAN_DELETE_OT: true, CAN_VIEW_BODEGA: true, CAN_MANAGE_BODEGA: true, CAN_MANAGE_WORKERS: true }
@@ -47,7 +47,7 @@ const mockUsers: Record<UserRole, MockUser> = {
     id: "user_taller_jefe",
     fullName: "Roberto (Jefe de Taller)",
     email: "roberto@tallerlosamigos.com",
-    role: "TALLER_JEFE",
+    roles: ["TALLER_JEFE"],
     tallerName: "Taller Los Amigos",
     tallerSlug: "taller-los-amigos",
     permisos: { CAN_EDIT_OT: true, CAN_DELETE_OT: false, CAN_VIEW_BODEGA: true, CAN_MANAGE_BODEGA: true }
@@ -56,7 +56,7 @@ const mockUsers: Record<UserRole, MockUser> = {
     id: "user_taller_recep",
     fullName: "Marta Gómez (Recepcionista)",
     email: "marta@tallerlosamigos.com",
-    role: "TALLER_RECEP",
+    roles: ["TALLER_RECEP"],
     tallerName: "Taller Los Amigos",
     tallerSlug: "taller-los-amigos",
     permisos: { CAN_EDIT_OT: true, CAN_DELETE_OT: false, CAN_VIEW_BODEGA: false, CAN_MANAGE_BODEGA: false }
@@ -65,7 +65,7 @@ const mockUsers: Record<UserRole, MockUser> = {
     id: "user_taller_tecnico",
     fullName: "Alexis Sánchez (Mecánico)",
     email: "alexis@tallerlosamigos.com",
-    role: "TALLER_TECNICO",
+    roles: ["TALLER_TECNICO"],
     tallerName: "Taller Los Amigos",
     tallerSlug: "taller-los-amigos",
     permisos: { CAN_EDIT_OT: false, CAN_DELETE_OT: false, CAN_VIEW_BODEGA: false, CAN_MANAGE_BODEGA: false }
@@ -74,7 +74,7 @@ const mockUsers: Record<UserRole, MockUser> = {
     id: "user_pendiente",
     fullName: "Usuario Nuevo",
     email: "nuevo@usuario.com",
-    role: "PENDIENTE",
+    roles: ["PENDIENTE"],
     tallerName: "",
     tallerSlug: "",
     permisos: {}
@@ -82,7 +82,7 @@ const mockUsers: Record<UserRole, MockUser> = {
 };
 
 type AuthContextType = {
-  role: UserRole;
+  roles: UserRole[];
   setRole: (role: UserRole) => void;
   user: any;
   isSignedIn: boolean;
@@ -140,7 +140,7 @@ export function AuthProvider({ children, dbUser }: { children: React.ReactNode; 
   if (demoMode) {
     const user = mockUsers[role];
     return (
-      <AuthContext.Provider value={{ role, setRole, user, isSignedIn: true, isDemoMode: true }}>
+      <AuthContext.Provider value={{ roles: [role], setRole, user, isSignedIn: true, isDemoMode: true }}>
         {children}
       </AuthContext.Provider>
     );
@@ -178,12 +178,16 @@ export function AuthProvider({ children, dbUser }: { children: React.ReactNode; 
     );
   }
 
-  const realRole = (!dbProfile?.tallerId && dbProfile?.role !== "SUPER_ADMIN") ? "PENDIENTE" : (dbProfile?.role || "TALLER_TECNICO");
+  let realRoles = dbProfile?.roles || ["TALLER_TECNICO"];
+  if (!dbProfile?.tallerId && !realRoles.includes("SUPER_ADMIN")) {
+    realRoles = ["PENDIENTE"];
+  }
+
   const realUser = dbProfile ? {
     id: dbProfile.id,
     fullName: dbProfile.nombre,
     email: dbProfile.email,
-    role: realRole,
+    roles: realRoles,
     permisos: dbProfile.permisos || {},
     tallerName: dbProfile.tallerName || "Mi Taller Automotriz",
     tallerSlug: dbProfile.tallerSlug || "demo"
@@ -191,7 +195,7 @@ export function AuthProvider({ children, dbUser }: { children: React.ReactNode; 
 
   return (
     <AuthContext.Provider value={{ 
-      role: realRole, 
+      roles: realRoles, 
       setRole: () => {}, 
       user: realUser, 
       isSignedIn: !!dbProfile, 
@@ -278,7 +282,7 @@ export function useSystemAuth() {
   if (context) {
     return {
       isDemoMode: context.isDemoMode,
-      role: context.role,
+      roles: context.roles,
       setRole: context.setRole,
       permisos: context.user?.permisos || {},
       tallerName: context.isDemoMode ? context.user.tallerName : (context.user?.tallerName || "Mi Taller Automotriz"),
@@ -289,7 +293,7 @@ export function useSystemAuth() {
 
   return {
     isDemoMode: false,
-    role: "TALLER_TECNICO" as UserRole,
+    roles: ["TALLER_TECNICO"] as UserRole[],
     setRole: () => {},
     permisos: {},
     tallerName: "Mi Taller Automotriz",
@@ -320,7 +324,7 @@ export function UserButton() {
   
   if (isDemo() || demoContext?.isDemoMode) {
     const fullName = demoContext?.user.fullName || "Usuario Demo";
-    const roleText = (demoContext?.role || "TALLER_TECNICO").replace("TALLER_", "").toLowerCase();
+    const roleText = (demoContext?.roles?.[0] || "TALLER_TECNICO").replace("TALLER_", "").toLowerCase();
     return (
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-3 bg-card p-2 rounded-lg border border-border shadow-sm">

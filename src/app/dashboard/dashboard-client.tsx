@@ -75,33 +75,17 @@ interface OT {
 const initialOTs: OT[] = [];
 
 export default function DashboardClient({ initialDbUser }: { initialDbUser: any }) {
-  const { role, user, permisos, tallerName, isDemoMode } = useSystemAuth();
+  const { roles, user, permisos, tallerName, isDemoMode } = useSystemAuth();
   const [ots, setOts] = useState<OT[]>(initialOTs);
   const [dbMecanicos, setDbMecanicos] = useState<{ id: string; nombre: string }[]>([]);
   const [workers, setWorkers] = useState<any[]>([]);
-  const [newWorker, setNewWorker] = useState({ nombre: "", email: "", role: "TALLER_TECNICO" });
+  const [newWorker, setNewWorker] = useState({ nombre: "", email: "", roles: ["TALLER_TECNICO"] as string[] });
   const [formClient, setFormClient] = useState({ nombre: "", rut: "", telefono: "" });
   const [formVehiculo, setFormVehiculo] = useState({ patente: "", marca: "", modelo: "", kilometraje: "" });
   const [formOT, setFormOT] = useState({ combustible: "50", observaciones: "" });
   const [activeTab, setActiveTab] = useState<"ots" | "crear" | "trabajadores" | "bodega" | "marketplace" | "directorio">("ots");
   const [notification, setNotification] = useState<string | null>(null);
-  const [customTasks, setCustomTasks] = useState<string[]>([
-    "Inspección de niveles y fluidos",
-    "Revisión de frenos delanteros y traseros",
-    "Escaneo de códigos de falla (OBD-II)",
-    "Revisión visual de suspensión y dirección"
-  ]);
-  const [newTaskInput, setNewTaskInput] = useState("");
 
-  const handleAddCustomTask = () => {
-    if (!newTaskInput.trim()) return;
-    setCustomTasks([...customTasks, newTaskInput.trim()]);
-    setNewTaskInput("");
-  };
-
-  const handleRemoveCustomTask = (indexToRemove: number) => {
-    setCustomTasks(customTasks.filter((_, idx) => idx !== indexToRemove));
-  };
 
   const [submitting, setSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -173,6 +157,8 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const [editingWorkerPermissions, setEditingWorkerPermissions] = useState<any>(null);
   const [newPermissions, setNewPermissions] = useState<any>({});
   const [isSavingPermissions, setIsSavingPermissions] = useState(false);
+  const [createTrabajoModal, setCreateTrabajoModal] = useState<{otId: string} | null>(null);
+  const [newTrabajoData, setNewTrabajoData] = useState({titulo: "", tareas: [] as string[]});
   
   const handleOpenPermissions = (worker: any) => {
     setEditingWorkerPermissions(worker);
@@ -536,7 +522,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
     }
   }, [isDemoMode, initialDbUser, user]);
 
-  if (role === "TALLER_TECNICO") {
+  if (roles.includes("TALLER_TECNICO") && roles.length === 1) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
         <div className="absolute top-4 right-4">
@@ -562,7 +548,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
     );
   }
 
-  if (role === "PENDIENTE") {
+  if (roles.includes("PENDIENTE") || roles.length === 0) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
         <div className="absolute top-4 right-4">
@@ -580,7 +566,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
     );
   }
 
-  if (role === "SUPER_ADMIN") {
+  if (roles.includes("SUPER_ADMIN")) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
         <div className="w-16 h-16 rounded-2xl bg-red-600/10 text-red-500 flex items-center justify-center mb-6">
@@ -630,8 +616,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           modelo: formVehiculo.modelo,
           kilometraje: Number(formVehiculo.kilometraje || 0),
           combustible: Number(formOT.combustible || 50),
-          observaciones: formOT.observaciones,
-          tareasAdicionales: customTasks
+          observaciones: formOT.observaciones
         });
 
         if (res.success) {
@@ -641,13 +626,6 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           setFormClient({ nombre: "", rut: "", telefono: "" });
           setFormVehiculo({ patente: "", marca: "", modelo: "", kilometraje: "" });
           setFormOT({ combustible: "50", observaciones: "" });
-          setCustomTasks([
-            "Inspección de niveles y fluidos",
-            "Revisión de frenos delanteros y traseros",
-            "Escaneo de códigos de falla (OBD-II)",
-            "Revisión visual de suspensión y dirección"
-          ]);
-          setNewTaskInput("");
         } else {
           triggerNotification(`Error al crear OT: ${res.error}`);
         }
@@ -672,8 +650,6 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         setFormClient({ nombre: "", rut: "", telefono: "" });
         setFormVehiculo({ patente: "", marca: "", modelo: "", kilometraje: "" });
         setFormOT({ combustible: "50", observaciones: "" });
-        setCustomTasks([]);
-        setNewTaskInput("");
       }
     } catch (err: any) {
       console.error(err);
@@ -702,18 +678,22 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
     }
   };
 
-  const handleCreateTrabajo = async (otId: string, titulo: string, tecnicoId: string) => {
+  const handleCreateTrabajo = async (otId: string, titulo: string, tareas: string[]) => {
     if (!titulo.trim()) return;
     if (!isDemoMode) {
-      const res = await createTrabajoOT(otId, titulo, tecnicoId === "Sin Asignar" ? undefined : tecnicoId);
+      const res = await createTrabajoOT(otId, titulo, undefined, tareas);
       if (res.success) {
         triggerNotification(`Trabajo creado en la OT.`);
+        setCreateTrabajoModal(null);
+        setNewTrabajoData({ titulo: "", tareas: [] });
         fetchDbData();
       } else {
         triggerNotification(`Error: ${res.error}`);
       }
     } else {
       triggerNotification(`Trabajo creado (Demo).`);
+      setCreateTrabajoModal(null);
+      setNewTrabajoData({ titulo: "", tareas: [] });
     }
   };
 
@@ -750,13 +730,13 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         tallerId,
         nombre: newWorker.nombre,
         email: newWorker.email,
-        role: newWorker.role as any
+        roles: newWorker.roles as any
       });
 
       if (res.success) {
         triggerNotification(`¡Invitación enviada a ${newWorker.nombre}!`);
         fetchDbData();
-        setNewWorker({ nombre: "", email: "", role: "TALLER_TECNICO" });
+        setNewWorker({ nombre: "", email: "", roles: ["TALLER_TECNICO"] });
       } else {
         triggerNotification(`Error: ${res.error}`);
       }
@@ -765,13 +745,13 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         id: `w_${Date.now()}`,
         nombre: newWorker.nombre,
         email: newWorker.email,
-        role: newWorker.role,
+        roles: newWorker.roles,
         clerkId: null,
         createdAt: new Date().toISOString()
       };
       setWorkers([...workers, mockNewWorker]);
       triggerNotification(`¡Trabajador ${newWorker.nombre} invitado (Demo)!`);
-      setNewWorker({ nombre: "", email: "", role: "TALLER_TECNICO" });
+      setNewWorker({ nombre: "", email: "", roles: ["TALLER_TECNICO"] });
     }
   };
 
@@ -858,7 +838,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
               >
                 Nueva OT
               </button>
-              {(role === "TALLER_ADMIN" || role === "TALLER_JEFE" || permisos?.CAN_VIEW_BODEGA) && (
+              {(roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE") || permisos?.CAN_VIEW_BODEGA) && (
                 <>
                   <button 
                     onClick={() => setActiveTab("bodega")} 
@@ -878,7 +858,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                   </button>
                 </>
               )}
-              {(role === "TALLER_ADMIN" || permisos?.CAN_MANAGE_WORKERS) && (
+              {(roles.includes("TALLER_ADMIN") || permisos?.CAN_MANAGE_WORKERS) && (
                 <button 
                   onClick={() => setActiveTab("trabajadores")} 
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
@@ -1015,10 +995,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                               </div>
                             ))}
                             <button
-                              onClick={() => {
-                                const titulo = prompt("Título del nuevo trabajo:");
-                                if (titulo) handleCreateTrabajo(o.id, titulo, "Sin Asignar");
-                              }}
+                              onClick={() => setCreateTrabajoModal({ otId: o.id })}
                               className="text-[10px] text-primary hover:underline text-left mt-1 font-semibold"
                             >
                               + Añadir Trabajo
@@ -1274,57 +1251,6 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 </div>
               </div>
 
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-primary mb-3 border-t border-border pt-4 flex items-center gap-1.5">
-                  <ClipboardList size={14} />
-                  4. Checklist Inicial de Tareas
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-[11px] font-semibold mb-1">Agregar Tarea al Checklist</label>
-                    <div className="flex gap-2">
-                      <input 
-                        type="text" 
-                        placeholder="Ej. Cambiar foco trasero izquierdo..."
-                        value={newTaskInput}
-                        onChange={(e) => setNewTaskInput(e.target.value)}
-                        className="flex-1 h-9 px-3 rounded-lg border border-input bg-background text-xs focus:outline-none focus:border-primary"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddCustomTask}
-                        className="h-9 px-4 rounded-lg bg-muted text-foreground text-xs font-bold hover:bg-muted/80 transition-colors"
-                      >
-                        Agregar
-                      </button>
-                    </div>
-                  </div>
-
-                  {customTasks.length > 0 && (
-                    <div className="space-y-1.5">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase">Tareas a realizar ({customTasks.length}):</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {customTasks.map((t, idx) => (
-                          <div 
-                            key={idx} 
-                            className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 text-primary rounded-full px-3 py-1.5 text-xs"
-                          >
-                            <span>{t}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveCustomTask(idx)}
-                              className="w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center text-[10px] hover:bg-primary/30 ml-1 font-bold cursor-pointer"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
               <div className="flex gap-4 border-t border-border pt-4 mt-8">
                 <button
                   type="button"
@@ -1378,18 +1304,32 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold mb-1">Rol Operativo</label>
-                    <select
-                      value={newWorker.role}
-                      onChange={(e) => setNewWorker({ ...newWorker, role: e.target.value as any })}
-                      className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:border-primary"
-                    >
-                      <option value="TALLER_TECNICO">Mecánico / Técnico (Vista Móvil)</option>
-                      <option value="TALLER_RECEP">Recepcionista (Dashboard Completo)</option>
-                      <option value="TALLER_JEFE">Jefe de Taller (Dashboard + Bodega + Marketplace)</option>
-                      <option value="TALLER_ADMIN">Co-Administrador / Socio (Dashboard Completo)</option>
-                    </select>
+                  <div className="md:col-span-3">
+                    <label className="block text-xs font-semibold mb-2">Roles Operativos (Puedes seleccionar varios)</label>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {[
+                        { val: "TALLER_TECNICO", label: "Mecánico / Técnico (Vista Móvil)" },
+                        { val: "TALLER_RECEP", label: "Recepcionista (Dashboard Completo)" },
+                        { val: "TALLER_JEFE", label: "Jefe de Taller (Dashboard + Bodega + Marketplace)" },
+                        { val: "TALLER_ADMIN", label: "Co-Administrador / Socio (Dashboard Completo)" }
+                      ].map(r => (
+                        <label key={r.val} className="flex items-center gap-2 p-2 border border-border rounded-lg bg-background hover:bg-muted/30 cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={newWorker.roles.includes(r.val)}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setNewWorker(prev => ({
+                                ...prev,
+                                roles: checked ? [...prev.roles, r.val] : prev.roles.filter(role => role !== r.val)
+                              }));
+                            }}
+                            className="w-4 h-4 rounded text-primary border-input focus:ring-primary"
+                          />
+                          <span className="font-medium">{r.label}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -1429,7 +1369,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                           <span className="text-muted-foreground text-[10px] block mt-0.5">{w.email}</span>
                         </td>
                         <td className="p-4 uppercase font-semibold text-primary">
-                          {w.role.replace("TALLER_", "")}
+                          {w.roles?.map((r: string) => r.replace("TALLER_", "")).join(", ") || "SIN ROL"}
                         </td>
                         <td className="p-4">
                           <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
@@ -1789,17 +1729,6 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 <p><span className="text-muted-foreground">Est. Combustible:</span> {formOT.combustible}%</p>
                 {formOT.observaciones && <p className="mt-1 bg-background p-2 rounded border border-border/60 leading-relaxed text-muted-foreground"><span className="font-semibold text-foreground">Obs:</span> {formOT.observaciones}</p>}
               </div>
-
-              {customTasks.length > 0 && (
-                <div className="border-t border-border/50 pt-2">
-                  <p className="font-bold text-primary uppercase text-[9px] tracking-wider mb-1">Checklist Inicial ({customTasks.length})</p>
-                  <ul className="list-disc pl-4 space-y-0.5 text-muted-foreground">
-                    {customTasks.map((t, i) => (
-                      <li key={i}>{t}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
 
             <div className="flex gap-3">
@@ -2335,6 +2264,85 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 className="h-10 px-4 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/95 transition-all glow-green-sm flex items-center gap-2"
               >
                 {isSavingPermissions ? "Guardando..." : "Guardar Permisos"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {createTrabajoModal && (
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-card w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-border animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-border flex justify-between items-center bg-muted/30">
+              <h2 className="text-lg font-bold">Crear Trabajo</h2>
+              <button 
+                onClick={() => setCreateTrabajoModal(null)}
+                className="w-8 h-8 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center hover:bg-secondary/80 transition-colors"
+              >
+                <XIcon size={16} />
+              </button>
+            </div>
+            
+            <div className="p-5 flex-1 overflow-y-auto space-y-4">
+              <div>
+                <label className="block text-xs font-semibold mb-1">Título del Trabajo</label>
+                <input
+                  type="text"
+                  value={newTrabajoData.titulo}
+                  onChange={(e) => setNewTrabajoData({...newTrabajoData, titulo: e.target.value})}
+                  className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:border-primary"
+                  placeholder="Ej: Cambio de Aceite, Frenos..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-2">Checklist de Tareas (Opcional)</label>
+                {newTrabajoData.tareas.map((t, idx) => (
+                  <div key={idx} className="flex gap-2 items-center mb-2">
+                    <input
+                      type="text"
+                      value={t}
+                      onChange={(e) => {
+                        const nt = [...newTrabajoData.tareas];
+                        nt[idx] = e.target.value;
+                        setNewTrabajoData({...newTrabajoData, tareas: nt});
+                      }}
+                      className="flex-1 h-9 px-3 rounded-lg border border-input bg-background text-xs focus:outline-none focus:border-primary"
+                      placeholder={`Tarea ${idx + 1}`}
+                    />
+                    <button 
+                      onClick={() => {
+                        const nt = newTrabajoData.tareas.filter((_, i) => i !== idx);
+                        setNewTrabajoData({...newTrabajoData, tareas: nt});
+                      }}
+                      className="text-red-500 hover:text-red-600 p-2"
+                    >
+                      <XIcon size={14} />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => setNewTrabajoData({...newTrabajoData, tareas: [...newTrabajoData.tareas, ""]})}
+                  className="text-xs text-primary hover:underline font-semibold mt-1 block"
+                >
+                  + Añadir tarea al checklist
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-4 border-t border-border flex justify-end gap-3 bg-muted/20">
+              <button
+                onClick={() => setCreateTrabajoModal(null)}
+                className="h-10 px-4 rounded-lg bg-secondary text-secondary-foreground text-xs font-bold hover:bg-secondary/80 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleCreateTrabajo(createTrabajoModal.otId, newTrabajoData.titulo, newTrabajoData.tareas.filter(t => t.trim() !== ""))}
+                disabled={!newTrabajoData.titulo.trim()}
+                className="h-10 px-4 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Crear Trabajo
               </button>
             </div>
           </div>

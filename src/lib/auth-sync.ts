@@ -40,7 +40,7 @@ export async function syncUser() {
             clerkId: clerkUser.id,
             email: emailLower,
             nombre: clerkUser.fullName || clerkUser.username || "Usuario sin nombre",
-            role: isSuperAdmin ? "SUPER_ADMIN" : "TALLER_TECNICO",
+            roles: isSuperAdmin ? ["SUPER_ADMIN"] : ["TALLER_TECNICO"],
           },
           include: { taller: true }
         });
@@ -48,10 +48,10 @@ export async function syncUser() {
     } else {
       // Si ya existe, nos aseguramos de que si es luciano.raw04@gmail.com sea SUPER_ADMIN
       const isSuperAdmin = email.toLowerCase().trim() === "luciano.raw04@gmail.com";
-      if (isSuperAdmin && dbUser.role !== "SUPER_ADMIN") {
+      if (isSuperAdmin && (!dbUser.roles || !dbUser.roles.includes("SUPER_ADMIN"))) {
         dbUser = await prisma.usuario.update({
           where: { id: dbUser.id },
-          data: { role: "SUPER_ADMIN" },
+          data: { roles: ["SUPER_ADMIN"] },
           include: { taller: true }
         });
       }
