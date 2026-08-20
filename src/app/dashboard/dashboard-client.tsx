@@ -52,6 +52,7 @@ import {
   asociarBodegaAOT
 } from "@/lib/db-actions";
 import DirectorioView from "./directorio-view";
+import AgendaView from "./agenda-view";
 
 interface OT {
   id: string;
@@ -82,8 +83,8 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const [newWorker, setNewWorker] = useState({ nombre: "", email: "", roles: ["TALLER_TECNICO"] as string[] });
   const [formClient, setFormClient] = useState({ nombre: "", rut: "", telefono: "" });
   const [formVehiculo, setFormVehiculo] = useState({ patente: "", marca: "", modelo: "", kilometraje: "" });
-  const [formOT, setFormOT] = useState({ combustible: "50", observaciones: "" });
-  const [activeTab, setActiveTab] = useState<"ots" | "crear" | "trabajadores" | "bodega" | "marketplace" | "directorio">("ots");
+  const [formOT, setFormOT] = useState({ combustible: "50", observaciones: "", reservaId: "" });
+  const [activeTab, setActiveTab] = useState<"ots" | "crear" | "trabajadores" | "bodega" | "marketplace" | "directorio" | "agenda">("ots");
   const [notification, setNotification] = useState<string | null>(null);
 
 
@@ -598,6 +599,13 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
     );
   }
 
+  const handleConvertToOT = (reserva: any) => {
+    setFormClient({ nombre: reserva.clienteNombre, rut: reserva.clienteRut || "", telefono: reserva.clienteTelefono });
+    setFormVehiculo({ patente: reserva.patente, marca: reserva.marca, modelo: reserva.modelo, kilometraje: "" });
+    setFormOT({ combustible: "50", observaciones: reserva.observaciones || `Servicio agendado: ${reserva.tipoServicio}`, reservaId: reserva.id });
+    setActiveTab("crear");
+  };
+
   const handleCreateOT = async () => {
     if (submitting) return;
     if (!formClient.nombre || !formVehiculo.patente || !formVehiculo.marca) {
@@ -621,7 +629,8 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           modelo: formVehiculo.modelo,
           kilometraje: Number(formVehiculo.kilometraje || 0),
           combustible: Number(formOT.combustible || 50),
-          observaciones: formOT.observaciones
+          observaciones: formOT.observaciones,
+          reservaId: formOT.reservaId ? formOT.reservaId : undefined
         });
 
         if (res.success) {
@@ -630,7 +639,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           setActiveTab("ots");
           setFormClient({ nombre: "", rut: "", telefono: "" });
           setFormVehiculo({ patente: "", marca: "", modelo: "", kilometraje: "" });
-          setFormOT({ combustible: "50", observaciones: "" });
+          setFormOT({ combustible: "50", observaciones: "", reservaId: "" });
         } else {
           triggerNotification(`Error al crear OT: ${res.error}`);
         }
@@ -654,7 +663,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         setActiveTab("ots");
         setFormClient({ nombre: "", rut: "", telefono: "" });
         setFormVehiculo({ patente: "", marca: "", modelo: "", kilometraje: "" });
-        setFormOT({ combustible: "50", observaciones: "" });
+        setFormOT({ combustible: "50", observaciones: "", reservaId: "" });
       }
     } catch (err: any) {
       console.error(err);
@@ -834,6 +843,14 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 }`}
               >
                 Directorio
+              </button>
+              <button 
+                onClick={() => setActiveTab("agenda")} 
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  activeTab === "agenda" ? "bg-primary text-white" : "hover:bg-muted text-muted-foreground"
+                }`}
+              >
+                Agenda
               </button>
               <button 
                 onClick={() => setActiveTab("crear")} 
@@ -1720,6 +1737,15 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         {/* DIRECTORIO TAB */}
         {activeTab === "directorio" && (
           <DirectorioView tallerId={initialDbUser?.tallerId || "demo-taller"} />
+        )}
+        
+        {/* AGENDA TAB */}
+        {activeTab === "agenda" && (
+          <AgendaView 
+            tallerId={initialDbUser?.tallerId || "demo-taller"} 
+            readOnly={roles.includes("TALLER_TECNICO") && !roles.includes("TALLER_ADMIN") && !roles.includes("TALLER_JEFE") && !roles.includes("TALLER_RECEP")} 
+            onConvertToOT={handleConvertToOT} 
+          />
         )}
       </main>
 

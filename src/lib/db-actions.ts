@@ -172,6 +172,7 @@ export async function createOT(data: {
   combustible: number;
   observaciones: string;
   tareasAdicionales?: string[];
+  reservaId?: string;
 }) {
   try {
     // 1. Buscar o crear cliente
@@ -248,6 +249,16 @@ export async function createOT(data: {
         }
       }
     });
+
+    if (data.reservaId) {
+      await prisma.reserva.update({
+        where: { id: data.reservaId },
+        data: { 
+          estado: "CONVERTIDA_A_OT",
+          ordenTrabajoId: ot.id
+        }
+      });
+    }
 
     await logOTAction(ot.id, `Orden de Trabajo creada e ingresada con patente ${vehiculo.patente}`);
 
@@ -1480,5 +1491,106 @@ export async function asociarBodegaAOT(otId: string, inventarioItemId: string, c
   } catch (error: any) {
     console.error("Error al asociar bodega a OT:", error);
     return { success: false, error: error.message };
+  }
+}
+
+// ==========================================
+// MÓDULO DE AGENDA Y RESERVAS
+// ==========================================
+
+export async function createReserva(data: {
+  tallerId: string;
+  clienteNombre: string;
+  clienteTelefono: string;
+  clienteRut: string;
+  patente: string;
+  marca: string;
+  modelo: string;
+  fechaHora: Date;
+  tipoServicio: string;
+  observaciones?: string;
+}) {
+  try {
+    const reserva = await prisma.reserva.create({
+      data: {
+        tallerId: data.tallerId,
+        clienteNombre: data.clienteNombre,
+        clienteTelefono: data.clienteTelefono,
+        clienteRut: data.clienteRut,
+        patente: data.patente.toUpperCase(),
+        marca: data.marca,
+        modelo: data.modelo,
+        fechaHora: data.fechaHora,
+        tipoServicio: data.tipoServicio,
+        observaciones: data.observaciones
+      }
+    });
+    revalidatePath("/dashboard");
+    return JSON.parse(JSON.stringify({ success: true, reserva }));
+  } catch (error: any) {
+    console.error("Error al crear reserva:", error);
+    return { error: error.message };
+  }
+}
+
+export async function getReservas(tallerId: string, fechaInicio?: Date, fechaFin?: Date) {
+  try {
+    const whereClause: any = { tallerId };
+    
+    if (fechaInicio && fechaFin) {
+      whereClause.fechaHora = {
+        gte: fechaInicio,
+        lte: fechaFin
+      };
+    }
+    
+    const reservas = await prisma.reserva.findMany({
+      where: whereClause,
+      orderBy: { fechaHora: "asc" }
+    });
+    return JSON.parse(JSON.stringify(reservas));
+  } catch (error: any) {
+    console.error("Error al obtener reservas:", error);
+    return [];
+  }
+}
+
+export async function updateReservaEstado(id: string, estado: "AGENDADA" | "CONFIRMADA" | "NO_ASISTIO" | "CONVERTIDA_A_OT" | "CANCELADA") {
+  try {
+    const reserva = await prisma.reserva.update({
+      where: { id },
+      data: { estado }
+    });
+    revalidatePath("/dashboard");
+    return JSON.parse(JSON.stringify({ success: true, reserva }));
+  } catch (error: any) {
+    console.error("Error al actualizar estado de reserva:", error);
+    return { error: error.message };
+  }
+}
+
+export async function getTallerLimiteReservas(tallerId: string) {
+  try {
+    const taller = await prisma.taller.findUnique({
+      where: { id: tallerId },
+      select: { limiteReservasDiarias: true }
+    });
+    return taller?.limiteReservasDiarias || 10;
+  } catch (error) {
+    return 10;
+  }
+}
+
+export async function updateLimiteReservas(tallerId: string, limite: number) {
+  try {
+    const taller = await prisma.taller.update({
+      where: { id: tallerId },
+      data: { limiteReservasDiarias: limite }
+    });
+    revalidatePath("/dashboard");
+    return JSON.parse(JSON.stringify({ success: true, limite: taller.limiteReservasDiarias }));
+  } catch (error: any) {
+    console.error("Error al actualizar límite de reservas:", error);
+    return { error: error.message };
   }
 }

@@ -44,6 +44,8 @@ model Taller {
   vehiculos  Vehiculo[]
   ots        OrdenTrabajo[]
   inventario InventarioItem[]
+  reservas   Reserva[]
+  limiteReservasDiarias Int @default(10) // Límite de vehículos que se pueden agendar en un solo día
 }
 
 // Usuarios vinculados a Clerk y un taller respectivo (excepto Super Admins)
@@ -127,6 +129,8 @@ model OrdenTrabajo {
 
   tallerId String
   taller   Taller @relation(fields: [tallerId], references: [id])
+
+  reserva  Reserva?
 
   fotos              FotoOT[]
   checklist          TareaChecklist[]
@@ -300,4 +304,36 @@ model Garantia {
   ordenTrabajo   OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+}
+
+enum EstadoReserva {
+  AGENDADA
+  CONFIRMADA
+  NO_ASISTIO
+  CONVERTIDA_A_OT
+  CANCELADA
+}
+
+model Reserva {
+  id              String        @id @default(uuid())
+  clienteNombre   String
+  clienteTelefono String
+  clienteRut      String
+  patente         String
+  marca           String
+  modelo          String
+  fechaHora       DateTime      // Fecha y hora específica de la cita
+  tipoServicio    String
+  estado          EstadoReserva @default(AGENDADA)
+  observaciones   String?
+
+  tallerId        String
+  taller          Taller        @relation(fields: [tallerId], references: [id], onDelete: Cascade)
+
+  // En caso de que se convierta a una OT, podemos enlazarla
+  ordenTrabajoId  String?       @unique
+  ordenTrabajo    OrdenTrabajo? @relation(fields: [ordenTrabajoId], references: [id], onDelete: SetNull)
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
