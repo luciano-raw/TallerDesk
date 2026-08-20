@@ -44,7 +44,7 @@ import {
   upgradeToAdmin,
   searchMarketplaceParts,
   asociarRepuestoAOT,
-  updateUserPermissions,
+  updateUserPermissionsAndRoles,
   createTrabajoOT,
   assignTrabajoMecanico,
   createTrabajoAdicional,
@@ -156,6 +156,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [editingWorkerPermissions, setEditingWorkerPermissions] = useState<any>(null);
   const [newPermissions, setNewPermissions] = useState<any>({});
+  const [newRoles, setNewRoles] = useState<string[]>([]);
   const [isSavingPermissions, setIsSavingPermissions] = useState(false);
   const [createTrabajoModal, setCreateTrabajoModal] = useState<{otId: string} | null>(null);
   const [newTrabajoData, setNewTrabajoData] = useState({titulo: "", tareas: [] as string[]});
@@ -163,6 +164,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const handleOpenPermissions = (worker: any) => {
     setEditingWorkerPermissions(worker);
     setNewPermissions(worker.permisos || {});
+    setNewRoles(worker.roles || []);
     setShowPermissionsModal(true);
   };
 
@@ -173,11 +175,11 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
       return;
     }
     setIsSavingPermissions(true);
-    const res = await updateUserPermissions(editingWorkerPermissions.id, newPermissions);
+    const res = await updateUserPermissionsAndRoles(editingWorkerPermissions.id, newPermissions, newRoles as any);
     setIsSavingPermissions(false);
     if (res.success) {
-      triggerNotification("Permisos actualizados correctamente");
-      const updatedWorkers = workers.map(w => w.id === editingWorkerPermissions.id ? { ...w, permisos: newPermissions } : w);
+      triggerNotification("Permisos y roles actualizados correctamente");
+      const updatedWorkers = workers.map(w => w.id === editingWorkerPermissions.id ? { ...w, permisos: newPermissions, roles: newRoles } : w);
       setWorkers(updatedWorkers);
       setShowPermissionsModal(false);
     } else {
@@ -1389,7 +1391,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                             className="h-8 px-3 rounded-lg bg-secondary text-secondary-foreground text-[10px] font-bold hover:bg-secondary/80 transition-all flex items-center gap-1 ml-auto"
                           >
                             <ShieldAlert size={12} />
-                            Permisos
+                            Roles y Permisos
                           </button>
                         </td>
                       </tr>
@@ -2202,7 +2204,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
             <div className="p-5 border-b border-border flex justify-between items-center bg-card">
               <h3 className="font-bold flex items-center gap-2">
                 <ShieldAlert className="text-primary" size={18} />
-                Permisos de {editingWorkerPermissions.nombre}
+                Roles y Permisos de {editingWorkerPermissions.nombre}
               </h3>
               <button 
                 onClick={() => setShowPermissionsModal(false)}
@@ -2212,12 +2214,37 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
               </button>
             </div>
             
-            <div className="p-5 space-y-4">
-              <p className="text-xs text-muted-foreground">Configura los accesos adicionales para este usuario independiente de su rol ({editingWorkerPermissions.roles[0].replace("TALLER_", "")}).</p>
-              
+            <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
               <div className="space-y-3">
-                <label className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card/50 hover:bg-muted/50 cursor-pointer transition-colors">
-                  <input type="checkbox" checked={newPermissions.CAN_EDIT_OT || false} onChange={(e) => setNewPermissions({...newPermissions, CAN_EDIT_OT: e.target.checked})} className="rounded border-input text-primary focus:ring-primary h-4 w-4" />
+                <h4 className="text-sm font-bold text-foreground">Roles del Usuario</h4>
+                <div className="grid grid-cols-1 gap-2">
+                  {[
+                    { val: "TALLER_TECNICO", label: "Mecánico / Técnico" },
+                    { val: "TALLER_RECEP", label: "Recepcionista" },
+                    { val: "TALLER_JEFE", label: "Jefe de Taller" },
+                    { val: "TALLER_ADMIN", label: "Co-Administrador / Socio" }
+                  ].map(r => (
+                    <label key={r.val} className="flex items-center gap-3 p-2 rounded-lg border border-border bg-card hover:bg-muted/50 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={newRoles.includes(r.val)} 
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setNewRoles(prev => checked ? [...prev, r.val] : prev.filter(role => role !== r.val));
+                        }} 
+                        className="rounded border-input text-primary focus:ring-primary h-4 w-4" 
+                      />
+                      <span className="text-sm font-semibold">{r.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-border">
+                <h4 className="text-sm font-bold text-foreground mb-3">Permisos Especiales Adicionales</h4>
+                <div className="space-y-3">
+                  <label className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card/50 hover:bg-muted/50 cursor-pointer transition-colors">
+                    <input type="checkbox" checked={newPermissions.CAN_EDIT_OT || false} onChange={(e) => setNewPermissions({...newPermissions, CAN_EDIT_OT: e.target.checked})} className="rounded border-input text-primary focus:ring-primary h-4 w-4" />
                   <div className="flex flex-col">
                     <span className="text-sm font-semibold">Modificar OTs</span>
                     <span className="text-[10px] text-muted-foreground">Permite editar OTs creadas, cambiar estados y asignar costos.</span>
@@ -2248,7 +2275,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                   </div>
                 </label>
               </div>
-
+              </div>
             </div>
             
             <div className="p-4 border-t border-border flex justify-end gap-3 bg-muted/20">

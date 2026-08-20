@@ -430,16 +430,20 @@ export async function createTallerWorker(data: {
   }
 }
 
-export async function updateUserPermissions(userId: string, permisos: any) {
+export async function updateUserPermissionsAndRoles(userId: string, permisos: any, roles?: any[]) {
   try {
+    const dataToUpdate: any = { permisos };
+    if (roles) {
+      dataToUpdate.roles = roles;
+    }
     const actualizado = await prisma.usuario.update({
       where: { id: userId },
-      data: { permisos }
+      data: dataToUpdate
     });
     revalidatePath("/dashboard");
     return { success: true, worker: actualizado };
   } catch (error: any) {
-    console.error("Error al actualizar permisos:", error);
+    console.error("Error al actualizar permisos y roles:", error);
     return { success: false, error: error.message };
   }
 }
