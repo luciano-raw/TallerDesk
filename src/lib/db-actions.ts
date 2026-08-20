@@ -1402,6 +1402,21 @@ export async function updateTrabajoAdicionalEstado(id: string, estado: "APROBADO
       await logOTAction(adicional.ordenTrabajoId, `Trabajo Adicional Aprobado por el cliente: ${adicional.titulo} ($${adicional.monto})`);
     } else {
       await logOTAction(adicional.ordenTrabajoId, `Trabajo Adicional Rechazado: ${adicional.titulo}`);
+      
+      // Pasar a recomendaciones pendientes
+      const ot = await prisma.ordenTrabajo.findUnique({
+        where: { id: adicional.ordenTrabajoId },
+        select: { vehiculoId: true }
+      });
+      if (ot && ot.vehiculoId) {
+        await prisma.recomendacion.create({
+          data: {
+            descripcion: `Trabajo rechazado: ${adicional.titulo} ${adicional.descripcion ? `(${adicional.descripcion})` : ""}`,
+            estado: "PENDIENTE",
+            vehiculoId: ot.vehiculoId
+          }
+        });
+      }
     }
     
     revalidatePath("/dashboard");

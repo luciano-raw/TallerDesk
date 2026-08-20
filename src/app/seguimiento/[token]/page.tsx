@@ -40,6 +40,7 @@ interface ClienteOT {
   }[];
   fotos: { url: string; descripcion: string; fecha: string }[];
   comentariosTaller: string[];
+  bitacora: { id: string; accion: string; usuarioNombre: string; createdAt: string }[];
 }
 
 const initialClienteOT: ClienteOT = {
@@ -69,7 +70,8 @@ const initialClienteOT: ClienteOT = {
   comentariosTaller: [
     "Vehículo ingresado para mantención de 40.000 km.",
     "Se detecta chillido al frenar. Se desmontaron ruedas y se corroboró desgaste crítico de pastillas."
-  ]
+  ],
+  bitacora: []
 };
 
 export default function ClienteSeguimientoPage() {
@@ -117,7 +119,8 @@ export default function ClienteSeguimientoPage() {
             comentariosTaller: data.diagnostico ? [
               `Requerimiento inicial: ${data.observaciones}`,
               `Diagnóstico del técnico: ${data.diagnostico}`
-            ] : [`Requerimiento inicial: ${data.observaciones}`]
+            ] : [`Requerimiento inicial: ${data.observaciones}`],
+            bitacora: data.bitacora || []
           };
           setOt(dbOt);
         }
@@ -399,13 +402,33 @@ export default function ClienteSeguimientoPage() {
           <div className="bg-card border border-border rounded-xl p-4 space-y-3">
             <h3 className="font-bold text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <MessageSquare size={14} className="text-primary" />
-              Notas de la Bitácora
+              Notas de la Recepción
             </h3>
 
             <div className="space-y-2">
               {ot.comentariosTaller.map((nota: string, i: number) => (
                 <div key={i} className="p-3 bg-muted/30 border border-border/70 rounded-lg text-xs leading-relaxed text-muted-foreground">
                   {nota}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {ot.bitacora && ot.bitacora.length > 0 && (
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3 mt-4">
+            <h3 className="font-bold text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <MessageSquare size={14} className="text-primary" />
+              Historial de Acciones (Bitácora)
+            </h3>
+            <div className="space-y-2">
+              {ot.bitacora.map((b: any) => (
+                <div key={b.id} className="p-2 border-b border-border/40 text-xs">
+                  <div className="flex justify-between items-start mb-1">
+                    <span className="font-semibold">{b.usuarioNombre || "Sistema"}</span>
+                    <span className="text-[9px] text-muted-foreground">{new Date(b.createdAt).toLocaleString()}</span>
+                  </div>
+                  <p className="text-muted-foreground leading-relaxed">{b.accion}</p>
                 </div>
               ))}
             </div>
