@@ -173,6 +173,7 @@ export async function createOT(data: {
   observaciones: string;
   tareasAdicionales?: string[];
   reservaId?: string;
+  anio?: number;
 }) {
   try {
     // 1. Buscar o crear cliente
@@ -204,9 +205,9 @@ export async function createOT(data: {
       vehiculo = await prisma.vehiculo.create({
         data: {
           patente: data.patente.toUpperCase(),
-          marca: data.marca,
-          modelo: data.modelo,
-          anio: new Date().getFullYear(),
+          marca: data.marca.toUpperCase(),
+          modelo: data.modelo.toUpperCase(),
+          anio: data.anio || new Date().getFullYear(),
           kilometraje: data.kilometraje,
           clienteId: cliente.id,
           tallerId: data.tallerId
@@ -218,8 +219,9 @@ export async function createOT(data: {
         where: { id: vehiculo.id },
         data: { 
           kilometraje: data.kilometraje, 
-          marca: data.marca, 
-          modelo: data.modelo,
+          marca: data.marca.toUpperCase(), 
+          modelo: data.modelo.toUpperCase(),
+          ...(data.anio ? { anio: data.anio } : {}),
           clienteId: cliente.id 
         }
       });
@@ -1573,24 +1575,28 @@ export async function getTallerLimiteReservas(tallerId: string) {
   try {
     const taller = await prisma.taller.findUnique({
       where: { id: tallerId },
-      select: { limiteReservasDiarias: true }
+      select: { limiteReservasDiarias: true, horaApertura: true, horaCierre: true }
     });
-    return taller?.limiteReservasDiarias || 10;
+    return {
+      limite: taller?.limiteReservasDiarias || 10,
+      horaApertura: taller?.horaApertura || "08:00",
+      horaCierre: taller?.horaCierre || "19:00"
+    };
   } catch (error) {
-    return 10;
+    return { limite: 10, horaApertura: "08:00", horaCierre: "19:00" };
   }
 }
 
-export async function updateLimiteReservas(tallerId: string, limite: number) {
+export async function updateLimiteReservas(tallerId: string, limite: number, horaApertura: string, horaCierre: string) {
   try {
     const taller = await prisma.taller.update({
       where: { id: tallerId },
-      data: { limiteReservasDiarias: limite }
+      data: { limiteReservasDiarias: limite, horaApertura, horaCierre }
     });
     revalidatePath("/dashboard");
-    return JSON.parse(JSON.stringify({ success: true, limite: taller.limiteReservasDiarias }));
+    return JSON.parse(JSON.stringify({ success: true, config: { limite: taller.limiteReservasDiarias, horaApertura: taller.horaApertura, horaCierre: taller.horaCierre } }));
   } catch (error: any) {
-    console.error("Error al actualizar límite de reservas:", error);
+    console.error("Error al actualizar config de agenda:", error);
     return { error: error.message };
   }
 }

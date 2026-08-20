@@ -53,6 +53,8 @@ import {
 } from "@/lib/db-actions";
 import DirectorioView from "./directorio-view";
 import AgendaView from "./agenda-view";
+import { ComboboxVehiculo } from "@/components/ui/combobox-vehiculo";
+import { getAllBrands, getModelsForBrand, getYears } from "@/lib/vehicle-data";
 
 interface OT {
   id: string;
@@ -82,12 +84,14 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const [workers, setWorkers] = useState<any[]>([]);
   const [newWorker, setNewWorker] = useState({ nombre: "", email: "", roles: ["TALLER_TECNICO"] as string[] });
   const [formClient, setFormClient] = useState({ nombre: "", rut: "", telefono: "" });
-  const [formVehiculo, setFormVehiculo] = useState({ patente: "", marca: "", modelo: "", kilometraje: "" });
+  const [formVehiculo, setFormVehiculo] = useState({ patente: "", marca: "", modelo: "", año: "", kilometraje: "" });
   const [formOT, setFormOT] = useState({ combustible: "50", observaciones: "", reservaId: "" });
   const [activeTab, setActiveTab] = useState<"ots" | "crear" | "trabajadores" | "bodega" | "marketplace" | "directorio" | "agenda">("ots");
   const [notification, setNotification] = useState<string | null>(null);
 
-
+  const brands = getAllBrands();
+  const models = getModelsForBrand(formVehiculo.marca);
+  const years = getYears();
   const [submitting, setSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
@@ -97,10 +101,10 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   };
 
   const handleDeleteOT = async (id: string, codigo: string) => {
-    const firstConfirm = window.confirm(`¿Estás seguro de que deseas dar de baja la orden ${codigo}?`);
+    const firstConfirm = window.confirm(`Â¿EstÃ¡s seguro de que deseas dar de baja la orden ${codigo}?`);
     if (!firstConfirm) return;
     
-    const secondConfirm = window.confirm(`¡Atención! Esto eliminará de forma permanente la orden ${codigo} junto con su checklist y fotos. ¿Confirmas la baja permanente?`);
+    const secondConfirm = window.confirm(`Â¡AtenciÃ³n! Esto eliminarÃ¡ de forma permanente la orden ${codigo} junto con su checklist y fotos. Â¿Confirmas la baja permanente?`);
     if (!secondConfirm) return;
 
     if (!isDemoMode) {
@@ -205,12 +209,12 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const handleAddCostItem = async () => {
     if (!activeManageCostsOT) return;
     if (!newCostItemDesc || !newCostItemMonto) {
-      triggerNotification("⚠️ Completa descripción y monto.");
+      triggerNotification("âš ï¸ Completa descripciÃ³n y monto.");
       return;
     }
     const amount = Number(newCostItemMonto);
     if (isNaN(amount) || amount <= 0) {
-      triggerNotification("⚠️ Monto inválido.");
+      triggerNotification("âš ï¸ Monto invÃ¡lido.");
       return;
     }
 
@@ -224,19 +228,19 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           monto: amount
         });
         if (res.success) {
-          triggerNotification("🟢 Ítem agregado correctamente al presupuesto.");
+          triggerNotification("ðŸŸ¢ Ãtem agregado correctamente al presupuesto.");
           await fetchDbData(activeManageCostsOT.id);
           setNewCostItemDesc("");
           setNewCostItemMonto("");
         } else {
-          triggerNotification(`❌ Error: ${res.error}`);
+          triggerNotification(`âŒ Error: ${res.error}`);
         }
       } else {
-        triggerNotification("Operación no disponible en Demo.");
+        triggerNotification("OperaciÃ³n no disponible en Demo.");
       }
     } catch (err: any) {
       console.error(err);
-      triggerNotification(`❌ Error: ${err.message}`);
+      triggerNotification(`âŒ Error: ${err.message}`);
     } finally {
       setIsAddingItem(false);
     }
@@ -269,17 +273,17 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           amount
         );
         if (res.success) {
-          triggerNotification("🟢 Trabajo adicional enviado al cliente.");
+          triggerNotification("ðŸŸ¢ Trabajo adicional enviado al cliente.");
           await fetchDbData(activeManageCostsOT.id);
           setNewAdicionalDetalle("");
           setNewAdicionalMonto("");
         } else {
-          triggerNotification(`❌ Error: ${res.error}`);
+          triggerNotification(`âŒ Error: ${res.error}`);
         }
       }
     } catch (err: any) {
       console.error(err);
-      triggerNotification(`❌ Error: ${err.message}`);
+      triggerNotification(`âŒ Error: ${err.message}`);
     } finally {
       setIsSavingAdicional(false);
     }
@@ -293,7 +297,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const copyTrackingLink = (tokenSeguro: string) => {
     const fullUrl = `${window.location.origin}/seguimiento/${tokenSeguro}`;
     navigator.clipboard.writeText(fullUrl);
-    triggerNotification("📋 ¡Enlace de seguimiento copiado!");
+    triggerNotification("ðŸ“‹ Â¡Enlace de seguimiento copiado!");
   };
 
   // --- Handlers de Bodega ---
@@ -309,12 +313,12 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         if (editingBodegaItem) {
           const res = await updateInventarioItem(editingBodegaItem.id, newBodegaItem);
           if (res.success) {
-            triggerNotification("🟢 Ítem editado en Bodega.");
+            triggerNotification("ðŸŸ¢ Ãtem editado en Bodega.");
             setEditingBodegaItem(null);
             setShowAddBodegaModal(false);
             await fetchDbData();
           } else {
-            triggerNotification(`❌ Error: ${res.error}`);
+            triggerNotification(`âŒ Error: ${res.error}`);
           }
         } else {
           const res = await createInventarioItem({
@@ -322,19 +326,19 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
             ...newBodegaItem
           });
           if (res.success) {
-            triggerNotification("🟢 Nuevo ítem registrado en Bodega.");
+            triggerNotification("ðŸŸ¢ Nuevo Ã­tem registrado en Bodega.");
             setShowAddBodegaModal(false);
             setNewBodegaItem({ nombre: "", sku: "", tipo: "REPUESTO", unidad: "UNIDAD", cantidad: 0, stockMinimo: 0, precioUnitario: 0, precioVenta: 0, ubicacion: "" });
             await fetchDbData();
           } else {
-            triggerNotification(`❌ Error: ${res.error}`);
+            triggerNotification(`âŒ Error: ${res.error}`);
           }
         }
       } else {
         // Modo Demo
         if (editingBodegaItem) {
           setInventarioItems(inventarioItems.map(i => i.id === editingBodegaItem.id ? { ...i, ...newBodegaItem } : i));
-          triggerNotification("🟢 Ítem editado en Bodega (Demo).");
+          triggerNotification("ðŸŸ¢ Ãtem editado en Bodega (Demo).");
           setEditingBodegaItem(null);
         } else {
           const newItem = {
@@ -342,31 +346,31 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
             ...newBodegaItem
           };
           setInventarioItems([...inventarioItems, newItem]);
-          triggerNotification("🟢 Ítem agregado a Bodega (Demo).");
+          triggerNotification("ðŸŸ¢ Ãtem agregado a Bodega (Demo).");
         }
         setShowAddBodegaModal(false);
         setNewBodegaItem({ nombre: "", sku: "", tipo: "REPUESTO", unidad: "UNIDAD", cantidad: 0, stockMinimo: 0, precioUnitario: 0, precioVenta: 0, ubicacion: "" });
       }
     } catch (err: any) {
-      triggerNotification(`❌ Error: ${err.message}`);
+      triggerNotification(`âŒ Error: ${err.message}`);
     } finally {
       setIsSavingBodegaItem(false);
     }
   };
 
   const handleDeleteBodegaItem = async (id: string) => {
-    if (confirm("¿Estás seguro de eliminar este ítem de la bodega?")) {
+    if (confirm("Â¿EstÃ¡s seguro de eliminar este Ã­tem de la bodega?")) {
       if (!isDemoMode) {
         const res = await deleteInventarioItem(id);
         if (res.success) {
-          triggerNotification("🟢 Ítem eliminado de Bodega.");
+          triggerNotification("ðŸŸ¢ Ãtem eliminado de Bodega.");
           await fetchDbData();
         } else {
-          triggerNotification(`❌ Error: ${res.error}`);
+          triggerNotification(`âŒ Error: ${res.error}`);
         }
       } else {
         setInventarioItems(inventarioItems.filter(i => i.id !== id));
-        triggerNotification("🟢 Ítem eliminado de Bodega (Demo).");
+        triggerNotification("ðŸŸ¢ Ãtem eliminado de Bodega (Demo).");
       }
     }
   };
@@ -377,7 +381,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
       if (res.success) {
         await fetchDbData();
       } else {
-        triggerNotification(`❌ Error: ${res.error}`);
+        triggerNotification(`âŒ Error: ${res.error}`);
       }
     } else {
       setInventarioItems(inventarioItems.map(i => {
@@ -400,7 +404,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
       const results = await searchMarketplaceParts(searchMarketplaceQuery);
       setMarketplaceItems(results);
     } catch (err: any) {
-      triggerNotification(`❌ Error al buscar: ${err.message}`);
+      triggerNotification(`âŒ Error al buscar: ${err.message}`);
     } finally {
       setLoadingMarketplace(false);
     }
@@ -408,7 +412,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
 
   const handleAsociarRepuestoAOT = async (part: any) => {
     if (!asociarTargetOTId) {
-      triggerNotification("⚠️ Selecciona una Orden de Trabajo.");
+      triggerNotification("âš ï¸ Selecciona una Orden de Trabajo.");
       return;
     }
     setIsAssociatingPart(true);
@@ -416,20 +420,20 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
       if (!isDemoMode) {
         const res = await asociarRepuestoAOT(asociarTargetOTId, part.nombre, part.precio);
         if (res.success) {
-          triggerNotification(`🟢 Asociado: "${part.nombre}" agregado a la OT.`);
+          triggerNotification(`ðŸŸ¢ Asociado: "${part.nombre}" agregado a la OT.`);
           setAsociarOTPartId(null);
           setAsociarTargetOTId("");
           await fetchDbData();
         } else {
-          triggerNotification(`❌ Error: ${res.error}`);
+          triggerNotification(`âŒ Error: ${res.error}`);
         }
       } else {
-        triggerNotification(`🟢 Asociado: "${part.nombre}" agregado a la OT (Demo).`);
+        triggerNotification(`ðŸŸ¢ Asociado: "${part.nombre}" agregado a la OT (Demo).`);
         setAsociarOTPartId(null);
         setAsociarTargetOTId("");
       }
     } catch (err: any) {
-      triggerNotification(`❌ Error: ${err.message}`);
+      triggerNotification(`âŒ Error: ${err.message}`);
     } finally {
       setIsAssociatingPart(false);
     }
@@ -437,25 +441,25 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
 
   const handleAsociarBodegaAOT = async (itemId: string, cantidad: number) => {
     if (!asociarTargetOTId) {
-      triggerNotification("⚠️ Selecciona una Orden de Trabajo.");
+      triggerNotification("âš ï¸ Selecciona una Orden de Trabajo.");
       return;
     }
     try {
       if (!isDemoMode) {
         const res = await asociarBodegaAOT(asociarTargetOTId, itemId, cantidad);
         if (res.success) {
-          triggerNotification(`🟢 Repuesto de bodega agregado a la OT.`);
+          triggerNotification(`ðŸŸ¢ Repuesto de bodega agregado a la OT.`);
           setAsociarOTPartId(null);
           setAsociarTargetOTId("");
           await fetchDbData();
         } else {
-          triggerNotification(`❌ Error: ${res.error}`);
+          triggerNotification(`âŒ Error: ${res.error}`);
         }
       } else {
-        triggerNotification(`🟢 Repuesto de bodega agregado a la OT (Demo).`);
+        triggerNotification(`ðŸŸ¢ Repuesto de bodega agregado a la OT (Demo).`);
       }
     } catch (err: any) {
-      triggerNotification(`❌ Error: ${err.message}`);
+      triggerNotification(`âŒ Error: ${err.message}`);
     }
   };
 
@@ -508,7 +512,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
       const filteredMecanicos = users.filter(u => u.roles?.includes("TALLER_TECNICO"));
       setDbMecanicos(filteredMecanicos.map(u => ({ id: u.id, nombre: u.nombre })));
 
-      // Cargar ítems de Bodega
+      // Cargar Ã­tems de Bodega
       const items = await getInventarioItems(tallerId);
       setInventarioItems(items);
     } else {
@@ -517,7 +521,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         { id: "demo-item-1", nombre: "Filtro de Aceite Suzuki Swift", sku: "SUZ-FA-10", tipo: "REPUESTO", cantidad: 5, precioUnitario: 8990, ubicacion: "Estante A-1" },
         { id: "demo-item-2", nombre: "Pastillas de Freno Toyota Yaris", sku: "TOY-PF-23", tipo: "REPUESTO", cantidad: 0, precioUnitario: 24900, ubicacion: "Estante B-3" },
         { id: "demo-item-3", nombre: "Silicona Alta Temperatura Gris", sku: "INS-SI-02", tipo: "INSUMO", cantidad: 12, precioUnitario: 4500, ubicacion: "Caja 5" },
-        { id: "demo-item-4", nombre: "Bujías de Iridio Denso", sku: "BUJ-DE-88", tipo: "REPUESTO", cantidad: 2, precioUnitario: 7500, ubicacion: "Estante A-4" }
+        { id: "demo-item-4", nombre: "BujÃ­as de Iridio Denso", sku: "BUJ-DE-88", tipo: "REPUESTO", cantidad: 2, precioUnitario: 7500, ubicacion: "Estante A-4" }
       ]);
     }
   };
@@ -537,16 +541,16 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-6 animate-pulse">
           <Wrench size={32} />
         </div>
-        <h1 className="text-2xl font-bold mb-2">Vista de Técnico Detectada</h1>
+        <h1 className="text-2xl font-bold mb-2">Vista de TÃ©cnico Detectada</h1>
         <p className="text-sm text-muted-foreground max-w-md mb-6 leading-relaxed">
-          Los mecánicos operan desde una interfaz especial optimizada para celulares dentro del taller.
+          Los mecÃ¡nicos operan desde una interfaz especial optimizada para celulares dentro del taller.
         </p>
         <div className="flex flex-col gap-3">
           <Link
             href="/dashboard/tecnico"
             className="flex justify-center items-center gap-2 px-6 h-11 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/95 transition-all glow-green-sm"
           >
-            Ir a Vista Móvil de Técnico
+            Ir a Vista MÃ³vil de TÃ©cnico
             <ArrowRight size={14} />
           </Link>
         </div>
@@ -565,7 +569,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         </div>
         <h1 className="text-2xl font-bold mb-2">Cuenta Pendiente</h1>
         <p className="text-sm text-muted-foreground max-w-md mb-6 leading-relaxed">
-          Tu cuenta está pendiente de aprobación o de asignación de rol.
+          Tu cuenta estÃ¡ pendiente de aprobaciÃ³n o de asignaciÃ³n de rol.
           <br/>Por favor espera a que un administrador te asigne a un taller para poder ingresar.
         </p>
       </div>
@@ -580,7 +584,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         </div>
         <h1 className="text-2xl font-bold mb-2">Modo Super Administrador</h1>
         <p className="text-sm text-muted-foreground max-w-md mb-6 leading-relaxed">
-          Estás logueado como administrador global de TallerDesk. No tienes un taller operativo asignado.
+          EstÃ¡s logueado como administrador global de TallerDesk. No tienes un taller operativo asignado.
         </p>
         <div className="flex flex-col sm:flex-row gap-3">
           <Link
@@ -591,7 +595,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           </Link>
           {isDemoMode && (
             <div className="bg-card border border-border p-3.5 rounded-lg text-xs max-w-sm flex items-center justify-center">
-              <span>💡 Cambia tu rol a **T. Admin** o **Recep** abajo a la derecha para ver este panel.</span>
+              <span>ðŸ’¡ Cambia tu rol a **T. Admin** o **Recep** abajo a la derecha para ver este panel.</span>
             </div>
           )}
         </div>
@@ -601,7 +605,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
 
   const handleConvertToOT = (reserva: any) => {
     setFormClient({ nombre: reserva.clienteNombre, rut: reserva.clienteRut || "", telefono: reserva.clienteTelefono });
-    setFormVehiculo({ patente: reserva.patente, marca: reserva.marca, modelo: reserva.modelo, kilometraje: "" });
+    setFormVehiculo({ patente: reserva.patente, marca: reserva.marca, modelo: reserva.modelo, año: "", kilometraje: "" });
     setFormOT({ combustible: "50", observaciones: reserva.observaciones || `Servicio agendado: ${reserva.tipoServicio}`, reservaId: reserva.id });
     setActiveTab("crear");
   };
@@ -609,7 +613,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const handleCreateOT = async () => {
     if (submitting) return;
     if (!formClient.nombre || !formVehiculo.patente || !formVehiculo.marca) {
-      triggerNotification("⚠️ Por favor completa los campos obligatorios del cliente y vehículo.");
+      triggerNotification("âš ï¸ Por favor completa los campos obligatorios del cliente y vehÃ­culo.");
       setShowConfirmModal(false);
       return;
     }
@@ -627,6 +631,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           patente: formVehiculo.patente.toUpperCase(),
           marca: formVehiculo.marca,
           modelo: formVehiculo.modelo,
+          anio: parseInt(formVehiculo.año) || undefined,
           kilometraje: Number(formVehiculo.kilometraje || 0),
           combustible: Number(formOT.combustible || 50),
           observaciones: formOT.observaciones,
@@ -634,11 +639,11 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         });
 
         if (res.success) {
-          triggerNotification(`¡Orden ${res.ot?.codigo} creada en Supabase!`);
+          triggerNotification(`Â¡Orden ${res.ot?.codigo} creada en Supabase!`);
           fetchDbData();
           setActiveTab("ots");
           setFormClient({ nombre: "", rut: "", telefono: "" });
-          setFormVehiculo({ patente: "", marca: "", modelo: "", kilometraje: "" });
+          setFormVehiculo({ patente: "", marca: "", modelo: "", año: "", kilometraje: "" });
           setFormOT({ combustible: "50", observaciones: "", reservaId: "" });
         } else {
           triggerNotification(`Error al crear OT: ${res.error}`);
@@ -659,10 +664,10 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           tokenSeguro: `token-${Date.now()}`
         };
         setOts([nuevaOT, ...ots]);
-        triggerNotification(`¡Orden ${nuevaOT.codigo} creada con éxito!`);
+        triggerNotification(`Â¡Orden ${nuevaOT.codigo} creada con Ã©xito!`);
         setActiveTab("ots");
         setFormClient({ nombre: "", rut: "", telefono: "" });
-        setFormVehiculo({ patente: "", marca: "", modelo: "", kilometraje: "" });
+        setFormVehiculo({ patente: "", marca: "", modelo: "", año: "", kilometraje: "" });
         setFormOT({ combustible: "50", observaciones: "", reservaId: "" });
       }
     } catch (err: any) {
@@ -716,11 +721,11 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
       const actualId = tecnicoIdOrName === "Sin Asignar" ? null : tecnicoIdOrName;
       const res = await assignTrabajoMecanico(trabajoId, actualId);
       if (res.success) {
-        triggerNotification(`Mecánico asignado al trabajo.`);
+        triggerNotification(`MecÃ¡nico asignado al trabajo.`);
         fetchDbData();
       }
     } else {
-      triggerNotification(`Mecánico asignado (Demo).`);
+      triggerNotification(`MecÃ¡nico asignado (Demo).`);
     }
   };
 
@@ -748,7 +753,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
       });
 
       if (res.success) {
-        triggerNotification(`¡Invitación enviada a ${newWorker.nombre}!`);
+        triggerNotification(`Â¡InvitaciÃ³n enviada a ${newWorker.nombre}!`);
         fetchDbData();
         setNewWorker({ nombre: "", email: "", roles: ["TALLER_TECNICO"] });
       } else {
@@ -764,7 +769,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         createdAt: new Date().toISOString()
       };
       setWorkers([...workers, mockNewWorker]);
-      triggerNotification(`¡Trabajador ${newWorker.nombre} invitado (Demo)!`);
+      triggerNotification(`Â¡Trabajador ${newWorker.nombre} invitado (Demo)!`);
       setNewWorker({ nombre: "", email: "", roles: ["TALLER_TECNICO"] });
     }
   };
@@ -834,7 +839,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                   activeTab === "ots" ? "bg-primary text-white" : "hover:bg-muted text-muted-foreground"
                 }`}
               >
-                Órdenes de Trabajo
+                Ã“rdenes de Trabajo
               </button>
               <button 
                 onClick={() => setActiveTab("directorio")} 
@@ -906,7 +911,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
             </div>
           </div>
           <div className="bg-card border border-border p-4 rounded-xl">
-            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">OTs en Diagnóstico</p>
+            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">OTs en DiagnÃ³stico</p>
             <div className="flex items-center justify-between">
               <p className="text-2xl font-black">{ots.filter(o => o.status === "DIAGNOSTICO").length}</p>
               <ClipboardList size={20} className="text-yellow-500" />
@@ -936,7 +941,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           <div className={`grid grid-cols-1 ${roles.includes("TALLER_RECEP") ? "lg:grid-cols-4" : "lg:grid-cols-1"} gap-6`}>
             <div className={`bg-card border border-border rounded-xl shadow-sm overflow-hidden ${roles.includes("TALLER_RECEP") ? "lg:col-span-3" : ""}`}>
               <div className="p-5 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <h2 className="font-bold text-base">Órdenes de Trabajo Activas</h2>
+                <h2 className="font-bold text-base">Ã“rdenes de Trabajo Activas</h2>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <div className="flex gap-2 items-center text-xs">
                     <input 
@@ -970,8 +975,8 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-muted/50 border-b border-border text-muted-foreground font-bold uppercase tracking-wider">
-                    <th className="p-4">Código OT</th>
-                    <th className="p-4">Vehículo / Patente</th>
+                    <th className="p-4">CÃ³digo OT</th>
+                    <th className="p-4">VehÃ­culo / Patente</th>
                     <th className="p-4">Cliente</th>
                     <th className="p-4">Asignado A</th>
                     <th className="p-4">Estado OT</th>
@@ -1020,7 +1025,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                               onClick={() => setCreateTrabajoModal({ otId: o.id })}
                               className="text-[10px] text-primary hover:underline text-left mt-1 font-semibold"
                             >
-                              + Añadir Trabajo
+                              + AÃ±adir Trabajo
                             </button>
                           </div>
                         ) : (
@@ -1115,7 +1120,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden p-5">
                   <h3 className="font-bold text-sm mb-4 border-b border-border pb-2 flex items-center gap-2">
                     <User size={14} className="text-primary"/>
-                    Disponibilidad Mecánicos
+                    Disponibilidad MecÃ¡nicos
                   </h3>
                   <div className="space-y-3">
                     {mechanicWorkloads.map(m => (
@@ -1133,7 +1138,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                       </div>
                     ))}
                     {mechanicWorkloads.length === 0 && (
-                      <p className="text-xs text-muted-foreground text-center py-2">No hay mecánicos registrados.</p>
+                      <p className="text-xs text-muted-foreground text-center py-2">No hay mecÃ¡nicos registrados.</p>
                     )}
                   </div>
                 </div>
@@ -1153,7 +1158,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1">
                   <User size={14} />
-                  1. Información del Cliente
+                  1. InformaciÃ³n del Cliente
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -1178,7 +1183,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold mb-1">Teléfono Móvil *</label>
+                    <label className="block text-[11px] font-semibold mb-1">TelÃ©fono MÃ³vil *</label>
                     <input 
                       type="text" 
                       required
@@ -1194,7 +1199,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1 border-t border-border pt-4">
                   <Car size={14} />
-                  2. Información del Vehículo
+                  2. InformaciÃ³n del VehÃ­culo
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
@@ -1209,25 +1214,30 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold mb-1">Marca *</label>
-                    <input 
-                      type="text" 
-                      required
-                      placeholder="Ej. Suzuki"
+                    <ComboboxVehiculo 
+                      label="Marca *"
+                      placeholder="Ej. TOYOTA"
                       value={formVehiculo.marca}
-                      onChange={(e) => setFormVehiculo({ ...formVehiculo, marca: e.target.value })}
-                      className="w-full h-9 px-3 rounded-lg border border-input bg-background text-xs focus:outline-none focus:border-primary"
+                      onChange={(val) => setFormVehiculo({ ...formVehiculo, marca: val, modelo: "" })}
+                      options={brands}
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold mb-1">Modelo *</label>
-                    <input 
-                      type="text" 
-                      required
-                      placeholder="Ej. Swift"
+                    <ComboboxVehiculo 
+                      label="Modelo *"
+                      placeholder="Ej. YARIS"
                       value={formVehiculo.modelo}
-                      onChange={(e) => setFormVehiculo({ ...formVehiculo, modelo: e.target.value })}
-                      className="w-full h-9 px-3 rounded-lg border border-input bg-background text-xs focus:outline-none focus:border-primary"
+                      onChange={(val) => setFormVehiculo({ ...formVehiculo, modelo: val })}
+                      options={models}
+                    />
+                  </div>
+                  <div>
+                    <ComboboxVehiculo 
+                      label="Año"
+                      placeholder="Ej. 2020"
+                      value={formVehiculo.año}
+                      onChange={(val) => setFormVehiculo({ ...formVehiculo, año: val })}
+                      options={years}
                     />
                   </div>
                   <div>
@@ -1247,7 +1257,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-primary mb-3 border-t border-border pt-4">
                   <ClipboardList size={14} />
-                  3. Recepción y Detalles de Orden
+                  3. RecepciÃ³n y Detalles de Orden
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -1265,7 +1275,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                     <label className="block text-[11px] font-semibold mb-1">Observaciones / Requerimientos</label>
                     <textarea 
                       rows={2}
-                      placeholder="Ej. Ruidos en tren delantero al pasar baches. Mantención de 40.000 km..."
+                      placeholder="Ej. Ruidos en tren delantero al pasar baches. MantenciÃ³n de 40.000 km..."
                       value={formOT.observaciones}
                       onChange={(e) => setFormOT({ ...formOT, observaciones: e.target.value })}
                       className="w-full p-2.5 rounded-lg border border-input bg-background text-xs focus:outline-none focus:border-primary"
@@ -1286,7 +1296,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                   type="submit"
                   className="flex-1 h-10 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/95 transition-all glow-green-sm"
                 >
-                  Crear Orden e Iniciar Recepción
+                  Crear Orden e Iniciar RecepciÃ³n
                 </button>
               </div>
             </form>
@@ -1308,7 +1318,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                     <input 
                       type="text" 
                       required
-                      placeholder="Ej. Juan Pérez"
+                      placeholder="Ej. Juan PÃ©rez"
                       value={newWorker.nombre}
                       onChange={(e) => setNewWorker({ ...newWorker, nombre: e.target.value })}
                       className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:border-primary"
@@ -1316,7 +1326,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                   </div>
                   
                   <div>
-                    <label className="block text-xs font-semibold mb-1">Correo Electrónico (Clerk)</label>
+                    <label className="block text-xs font-semibold mb-1">Correo ElectrÃ³nico (Clerk)</label>
                     <input 
                       type="email" 
                       required
@@ -1331,7 +1341,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                     <label className="block text-xs font-semibold mb-2">Roles Operativos (Puedes seleccionar varios)</label>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       {[
-                        { val: "TALLER_TECNICO", label: "Mecánico / Técnico (Vista Móvil)" },
+                        { val: "TALLER_TECNICO", label: "MecÃ¡nico / TÃ©cnico (Vista MÃ³vil)" },
                         { val: "TALLER_RECEP", label: "Recepcionista (Dashboard Completo)" },
                         { val: "TALLER_JEFE", label: "Jefe de Taller (Dashboard + Bodega + Marketplace)" },
                         { val: "TALLER_ADMIN", label: "Co-Administrador / Socio (Dashboard Completo)" }
@@ -1400,7 +1410,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                               ? "bg-success/15 text-success" 
                               : "bg-warning/15 text-warning animate-pulse"
                           }`}>
-                            {w.clerkId ? "Habilitado / Registrado" : "Invitación Pendiente"}
+                            {w.clerkId ? "Habilitado / Registrado" : "InvitaciÃ³n Pendiente"}
                           </span>
                         </td>
                         <td className="p-4 text-muted-foreground">
@@ -1424,7 +1434,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           </div>
         )}
 
-        {/* PESTAÑA: BODEGA */}
+        {/* PESTAÃ‘A: BODEGA */}
         {activeTab === "bodega" && (roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE") || permisos?.CAN_VIEW_BODEGA) && (
           <div className="space-y-6 animate-fade-in">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1442,19 +1452,19 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 className="h-9 px-4 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/95 flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <Plus size={14} />
-                Agregar Ítem a Bodega
+                Agregar Ãtem a Bodega
               </button>
               )}
             </div>
 
-            {/* Alertas de Stock Crítico */}
+            {/* Alertas de Stock CrÃ­tico */}
             {inventarioItems.some(i => i.cantidad <= 2) && (
               <div className="bg-amber-600/10 border border-amber-600/20 text-amber-500 p-4 rounded-xl text-xs space-y-1">
-                <p className="font-bold">⚠️ Alertas de Repuestos Críticos / Agotados:</p>
+                <p className="font-bold">âš ï¸ Alertas de Repuestos CrÃ­ticos / Agotados:</p>
                 <ul className="list-disc pl-4 space-y-0.5">
                   {inventarioItems.filter(i => i.cantidad <= 2).map(item => (
                     <li key={item.id}>
-                      <span className="font-semibold">{item.nombre}</span> - Stock actual: <span className="font-extrabold">{item.cantidad}</span> unidades ({item.cantidad === 0 ? "AGOTADO" : "Bajo Mínimo"}). Ubicación: {item.ubicacion || "No especificada"}.
+                      <span className="font-semibold">{item.nombre}</span> - Stock actual: <span className="font-extrabold">{item.cantidad}</span> unidades ({item.cantidad === 0 ? "AGOTADO" : "Bajo MÃ­nimo"}). UbicaciÃ³n: {item.ubicacion || "No especificada"}.
                     </li>
                   ))}
                 </ul>
@@ -1477,7 +1487,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                     onChange={(e) => setFilterBodegaTipo(e.target.value as any)}
                     className="h-8 px-2 rounded-lg border border-input bg-background text-xs focus:outline-none focus:border-primary"
                   >
-                    <option value="TODOS">Todos los ítems</option>
+                    <option value="TODOS">Todos los Ã­tems</option>
                     <option value="REPUESTO">Solo Repuestos</option>
                     <option value="INSUMO">Solo Insumos</option>
                   </select>
@@ -1489,12 +1499,12 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                   <thead>
                     <tr className="bg-muted/50 border-b border-border text-muted-foreground font-bold uppercase tracking-wider">
                       <th className="p-4">SKU</th>
-                      <th className="p-4">Nombre de Ítem</th>
+                      <th className="p-4">Nombre de Ãtem</th>
                       <th className="p-4 text-center">Tipo / Unidad</th>
-                      <th className="p-4 text-center">Stock (Fís. / Rsv. / Disp.)</th>
+                      <th className="p-4 text-center">Stock (FÃ­s. / Rsv. / Disp.)</th>
                       <th className="p-4 text-right">Precio Costo</th>
                       <th className="p-4 text-right">Precio Venta</th>
-                      <th className="p-4">Ubicación</th>
+                      <th className="p-4">UbicaciÃ³n</th>
                       {(roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE") || permisos?.CAN_MANAGE_BODEGA) && (
                         <th className="p-4 text-right">Acciones</th>
                       )}
@@ -1524,7 +1534,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                           <td className="p-4">
                             <div className="flex flex-col items-center justify-center gap-1">
                               <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-muted-foreground">Físico:</span>
+                                <span className="text-[10px] text-muted-foreground">FÃ­sico:</span>
                                 <button
                                   onClick={() => handleAdjustStock(item.id, -1)}
                                   className="w-4 h-4 rounded bg-muted hover:bg-muted/80 text-foreground font-bold text-[10px] flex items-center justify-center cursor-pointer"
@@ -1591,15 +1601,15 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           </div>
         )}
 
-        {/* PESTAÑA: MARKETPLACE */}
+        {/* PESTAÃ‘A: MARKETPLACE */}
         {activeTab === "marketplace" && (roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE") || permisos?.CAN_VIEW_BODEGA) && (
           <div className="space-y-6 animate-fade-in">
             <div>
               <h2 className="font-bold text-lg">Marketplace de Repuestos Integrado</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">Busca repuestos reales en Mercado Libre Chile y tiendas locales, y asócialos a tus presupuestos.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Busca repuestos reales en Mercado Libre Chile y tiendas locales, y asÃ³cialos a tus presupuestos.</p>
             </div>
 
-            {/* Formulario de Búsqueda */}
+            {/* Formulario de BÃºsqueda */}
             <div className="bg-card border border-border p-5 rounded-xl shadow-sm space-y-4">
               <form onSubmit={handleSearchMarketplace} className="flex gap-2">
                 <div className="relative flex-1">
@@ -1626,10 +1636,10 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 </button>
               </form>
 
-              {/* Marcas Rápidas */}
+              {/* Marcas RÃ¡pidas */}
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="text-muted-foreground font-semibold">Búsquedas sugeridas:</span>
-                {["Pastillas de freno Toyota", "Amortiguadores Chevrolet", "Filtro de aceite Hyundai", "Bujías Suzuki"].map((tag) => (
+                <span className="text-muted-foreground font-semibold">BÃºsquedas sugeridas:</span>
+                {["Pastillas de freno Toyota", "Amortiguadores Chevrolet", "Filtro de aceite Hyundai", "BujÃ­as Suzuki"].map((tag) => (
                   <button
                     key={tag}
                     type="button"
@@ -1680,7 +1690,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                         <p className="text-base font-black text-primary">${item.precio.toLocaleString("es-CL")} CLP</p>
                       </div>
 
-                      {/* Botón de Integración con OT */}
+                      {/* BotÃ³n de IntegraciÃ³n con OT */}
                       {asociarOTPartId === item.id ? (
                         <div className="flex flex-col gap-1 items-end w-2/3 animate-fade-in">
                           <select
@@ -1763,18 +1773,18 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 <p className="font-bold text-primary uppercase text-[9px] tracking-wider mb-1">Cliente</p>
                 <p><span className="text-muted-foreground">Nombre:</span> {formClient.nombre}</p>
                 {formClient.rut && <p><span className="text-muted-foreground">RUT/DNI:</span> {formClient.rut}</p>}
-                {formClient.telefono && <p><span className="text-muted-foreground">Teléfono:</span> {formClient.telefono}</p>}
+                {formClient.telefono && <p><span className="text-muted-foreground">TelÃ©fono:</span> {formClient.telefono}</p>}
               </div>
 
               <div className="border-t border-border/50 pt-2">
-                <p className="font-bold text-primary uppercase text-[9px] tracking-wider mb-1">Vehículo</p>
+                <p className="font-bold text-primary uppercase text-[9px] tracking-wider mb-1">VehÃ­culo</p>
                 <p className="font-semibold">{formVehiculo.marca} {formVehiculo.modelo}</p>
                 <p><span className="text-muted-foreground">Patente:</span> <span className="bg-muted px-1 py-0.2 rounded font-bold uppercase tracking-wider text-[10px]">{formVehiculo.patente}</span></p>
                 <p><span className="text-muted-foreground">Kilometraje:</span> {Number(formVehiculo.kilometraje).toLocaleString("es-CL")} Km</p>
               </div>
 
               <div className="border-t border-border/50 pt-2">
-                <p className="font-bold text-primary uppercase text-[9px] tracking-wider mb-1">Detalles de Recepción</p>
+                <p className="font-bold text-primary uppercase text-[9px] tracking-wider mb-1">Detalles de RecepciÃ³n</p>
                 <p><span className="text-muted-foreground">Est. Combustible:</span> {formOT.combustible}%</p>
                 {formOT.observaciones && <p className="mt-1 bg-background p-2 rounded border border-border/60 leading-relaxed text-muted-foreground"><span className="font-semibold text-foreground">Obs:</span> {formOT.observaciones}</p>}
               </div>
@@ -1811,7 +1821,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 text-foreground">
           <div className="bg-card border border-border w-full max-w-md rounded-2xl p-6 space-y-6 shadow-2xl animate-scale-in">
             <div className="flex justify-between items-center border-b border-border pb-3">
-              <h3 className="text-base font-bold">{editingBodegaItem ? "Editar Ítem de Bodega" : "Registrar Ítem en Bodega"}</h3>
+              <h3 className="text-base font-bold">{editingBodegaItem ? "Editar Ãtem de Bodega" : "Registrar Ãtem en Bodega"}</h3>
               <button 
                 onClick={() => setShowAddBodegaModal(false)}
                 className="text-muted-foreground hover:text-foreground text-sm font-bold bg-muted hover:bg-muted/80 px-2.5 py-1 rounded-lg cursor-pointer transition-all"
@@ -1835,7 +1845,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold mb-1">SKU / Código Barra</label>
+                  <label className="block font-semibold mb-1">SKU / CÃ³digo Barra</label>
                   <input 
                     type="text" 
                     placeholder="Ej. SUZ-FA-10"
@@ -1845,13 +1855,13 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold mb-1">Tipo de Ítem</label>
+                  <label className="block font-semibold mb-1">Tipo de Ãtem</label>
                   <select 
                     value={newBodegaItem.tipo}
                     onChange={(e) => setNewBodegaItem({ ...newBodegaItem, tipo: e.target.value as any })}
                     className="w-full h-8 px-2 rounded-md border border-input bg-background focus:outline-none focus:border-primary"
                   >
-                    <option value="REPUESTO">Repuesto (Refacción)</option>
+                    <option value="REPUESTO">Repuesto (RefacciÃ³n)</option>
                     <option value="INSUMO">Insumo (Aceite, pasta, etc.)</option>
                   </select>
                 </div>
@@ -1888,7 +1898,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block font-semibold mb-1">Stock Mínimo</label>
+                  <label className="block font-semibold mb-1">Stock MÃ­nimo</label>
                   <input 
                     type="number" 
                     min={0}
@@ -1921,10 +1931,10 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
               </div>
 
               <div>
-                <label className="block font-semibold mb-1">Ubicación Física en Taller</label>
+                <label className="block font-semibold mb-1">UbicaciÃ³n FÃ­sica en Taller</label>
                 <input 
                   type="text" 
-                  placeholder="Ej. Estante A, Cajón 3"
+                  placeholder="Ej. Estante A, CajÃ³n 3"
                   value={newBodegaItem.ubicacion}
                   onChange={(e) => setNewBodegaItem({ ...newBodegaItem, ubicacion: e.target.value })}
                   className="w-full h-8 px-2 rounded-md border border-input bg-background focus:outline-none focus:border-primary"
@@ -1954,7 +1964,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
             <div className="flex justify-between items-center border-b border-border pb-3">
               <div>
                 <h3 className="text-base font-bold">Gestionar Valores y Presupuesto</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Orden de Trabajo: <span className="font-bold text-primary">{activeManageCostsOT.codigo}</span> | Vehículo: {activeManageCostsOT.vehiculo}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Orden de Trabajo: <span className="font-bold text-primary">{activeManageCostsOT.codigo}</span> | VehÃ­culo: {activeManageCostsOT.vehiculo}</p>
               </div>
               <button 
                 onClick={() => setActiveManageCostsOT(null)}
@@ -1971,7 +1981,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 
                 {/* Add Item Form */}
                 <div className="bg-muted/30 p-4 rounded-xl border border-border space-y-3">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Agregar Nuevo Ítem</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Agregar Nuevo Ãtem</p>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block text-[9px] font-semibold mb-1">Tipo</label>
@@ -2013,16 +2023,16 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                     {isAddingItem ? (
                       <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                     ) : (
-                      "Agregar Ítem al Presupuesto"
+                      "Agregar Ãtem al Presupuesto"
                     )}
                   </button>
                 </div>
 
                 {/* List of items */}
                 <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Ítems Registrados</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Ãtems Registrados</p>
                   {(!activeManageCostsOT.itemsPresupuesto || activeManageCostsOT.itemsPresupuesto.length === 0) ? (
-                    <p className="text-xs text-muted-foreground italic bg-muted/20 p-4 rounded-xl border border-border/40 text-center">No hay ítems cargados en esta orden.</p>
+                    <p className="text-xs text-muted-foreground italic bg-muted/20 p-4 rounded-xl border border-border/40 text-center">No hay Ã­tems cargados en esta orden.</p>
                   ) : (
                     <div className="divide-y divide-border/60 border border-border rounded-xl overflow-hidden bg-muted/10">
                       {activeManageCostsOT.itemsPresupuesto.map((item: any) => (
@@ -2038,9 +2048,9 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                             <button
                               onClick={() => handleDeleteCostItem(item.id)}
                               className="text-red-500 hover:text-red-600 font-bold hover:bg-red-500/10 p-1 rounded transition-colors cursor-pointer"
-                              title="Eliminar ítem"
+                              title="Eliminar Ã­tem"
                             >
-                              ✕
+                              âœ•
                             </button>
                           </div>
                         </div>
@@ -2050,11 +2060,11 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 </div>
               </div>
 
-              {/* SECTION B: TRABAJO ADICIONAL PENDIENTE DE APROBACIÓN */}
+              {/* SECTION B: TRABAJO ADICIONAL PENDIENTE DE APROBACIÃ“N */}
               <div className="space-y-4 border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0 md:pl-6 flex flex-col justify-between">
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-primary">Trabajo Adicional (Aprobación Cliente)</h4>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-primary">Trabajo Adicional (AprobaciÃ³n Cliente)</h4>
                     {activeManageCostsOT.presupuestoEstado && (
                       <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider ${
                         activeManageCostsOT.presupuestoEstado === "PENDIENTE" ? "bg-amber-600/10 text-amber-500 border border-amber-600/20" :
@@ -2067,12 +2077,12 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                   </div>
 
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Si durante la revisión o diagnóstico encuentras fallas no presupuestadas (por ejemplo, pastillas de freno gastadas, amortiguador reventado), describe el problema aquí y define el costo. El cliente podrá ver esto y **aprobar o rechazar** en tiempo real desde su link.
+                    Si durante la revisiÃ³n o diagnÃ³stico encuentras fallas no presupuestadas (por ejemplo, pastillas de freno gastadas, amortiguador reventado), describe el problema aquÃ­ y define el costo. El cliente podrÃ¡ ver esto y **aprobar o rechazar** en tiempo real desde su link.
                   </p>
 
                   <div className="space-y-3 bg-muted/20 p-4 rounded-xl border border-border/80">
                     <div>
-                      <label className="block text-[9px] font-semibold mb-1">Monto de Reparación Adicional (CLP)</label>
+                      <label className="block text-[9px] font-semibold mb-1">Monto de ReparaciÃ³n Adicional (CLP)</label>
                       <input 
                         type="number"
                         placeholder="Ej. 35000"
@@ -2099,7 +2109,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                       {isSavingAdicional ? (
                         <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                       ) : (
-                        "Configurar y Enviar para Aprobación"
+                        "Configurar y Enviar para AprobaciÃ³n"
                       )}
                     </button>
                   </div>
@@ -2155,7 +2165,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                   Detalle e Historial de Orden
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Orden: <span className="font-extrabold text-primary">{selectedDetailOT.codigo}</span> | Vehículo: <span className="font-semibold">{selectedDetailOT.vehiculo}</span> | Patente: <span className="bg-muted px-1 py-0.2 rounded font-mono font-bold uppercase tracking-wider text-[10px]">{selectedDetailOT.patente}</span>
+                  Orden: <span className="font-extrabold text-primary">{selectedDetailOT.codigo}</span> | VehÃ­culo: <span className="font-semibold">{selectedDetailOT.vehiculo}</span> | Patente: <span className="bg-muted px-1 py-0.2 rounded font-mono font-bold uppercase tracking-wider text-[10px]">{selectedDetailOT.patente}</span>
                 </p>
               </div>
               <button 
@@ -2174,16 +2184,16 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 
                 {/* 1. Ficha General */}
                 <div className="space-y-3 bg-muted/20 p-4 rounded-xl border border-border/80 text-xs">
-                  <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Ficha de Recepción</p>
+                  <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Ficha de RecepciÃ³n</p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                     <p><span className="text-muted-foreground">Cliente:</span> <span className="font-semibold">{selectedDetailOT.cliente}</span></p>
-                    <p><span className="text-muted-foreground">Mecánico:</span> <span className="font-semibold">{selectedDetailOT.tecnico}</span></p>
+                    <p><span className="text-muted-foreground">MecÃ¡nico:</span> <span className="font-semibold">{selectedDetailOT.tecnico}</span></p>
                     <p><span className="text-muted-foreground">Estado Actual:</span> <span className="bg-primary/10 text-primary border border-primary/20 text-[9px] font-extrabold px-1.5 py-0.2 rounded uppercase tracking-wider">{selectedDetailOT.status}</span></p>
                     <p><span className="text-muted-foreground">Combustible:</span> <span className="font-semibold">{selectedDetailOT.combustible}%</span></p>
                   </div>
                   {selectedDetailOT.observaciones && (
                     <div className="border-t border-border/60 pt-2 mt-2">
-                      <p className="text-muted-foreground text-[10px] font-semibold mb-1">Requerimientos / Observación Inicial:</p>
+                      <p className="text-muted-foreground text-[10px] font-semibold mb-1">Requerimientos / ObservaciÃ³n Inicial:</p>
                       <p className="bg-background p-2 rounded border border-border/40 leading-relaxed text-muted-foreground italic">
                         "{selectedDetailOT.observaciones}"
                       </p>
@@ -2195,7 +2205,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 <div className="space-y-2.5">
                   <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Tareas y Avances del Checklist</p>
                   {(!selectedDetailOT.checklist || selectedDetailOT.checklist.length === 0) ? (
-                    <p className="text-xs text-muted-foreground italic text-center py-2">No se configuró checklist para esta orden.</p>
+                    <p className="text-xs text-muted-foreground italic text-center py-2">No se configurÃ³ checklist para esta orden.</p>
                   ) : (
                     <div className="space-y-2 border border-border rounded-xl p-3 bg-muted/10">
                       {selectedDetailOT.checklist.map((item: any) => (
@@ -2222,14 +2232,14 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
               <div className="space-y-4 border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0 md:pl-6 flex flex-col">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-primary border-b border-border/60 pb-1.5 flex items-center gap-1.5">
                   <Clock size={14} />
-                  Línea de Tiempo y Bitácora de Acciones
+                  LÃ­nea de Tiempo y BitÃ¡cora de Acciones
                 </h4>
 
                 <div className="flex-1 space-y-4 max-h-[420px] overflow-y-auto pr-2">
                   {(!selectedDetailOT.bitacora || selectedDetailOT.bitacora.length === 0) ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
                       <Clock size={24} className="animate-pulse mb-2" />
-                      <p className="text-xs italic">Aún no se registran acciones en la bitácora de esta orden.</p>
+                      <p className="text-xs italic">AÃºn no se registran acciones en la bitÃ¡cora de esta orden.</p>
                     </div>
                   ) : (
                     <div className="relative pl-4 border-l border-border/80 space-y-6">
@@ -2255,7 +2265,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                                 }`}>
                                   {b.usuarioNombre || "Sistema"}
                                 </span>
-                                <span>•</span>
+                                <span>â€¢</span>
                                 <span>{new Date(b.createdAt).toLocaleString("es-CL", { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}</span>
                               </div>
                             </div>
@@ -2304,7 +2314,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 <h4 className="text-sm font-bold text-foreground">Roles del Usuario</h4>
                 <div className="grid grid-cols-1 gap-2">
                   {[
-                    { val: "TALLER_TECNICO", label: "Mecánico / Técnico" },
+                    { val: "TALLER_TECNICO", label: "MecÃ¡nico / TÃ©cnico" },
                     { val: "TALLER_RECEP", label: "Recepcionista" },
                     { val: "TALLER_JEFE", label: "Jefe de Taller" },
                     { val: "TALLER_ADMIN", label: "Co-Administrador / Socio" }
@@ -2356,7 +2366,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                   <input type="checkbox" checked={newPermissions.CAN_MANAGE_BODEGA || false} onChange={(e) => setNewPermissions({...newPermissions, CAN_MANAGE_BODEGA: e.target.checked})} className="rounded border-input text-primary focus:ring-primary h-4 w-4" />
                   <div className="flex flex-col">
                     <span className="text-sm font-semibold">Administrar Bodega</span>
-                    <span className="text-[10px] text-muted-foreground">Agregar, editar o eliminar ítems del inventario.</span>
+                    <span className="text-[10px] text-muted-foreground">Agregar, editar o eliminar Ã­tems del inventario.</span>
                   </div>
                 </label>
               </div>
@@ -2397,7 +2407,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
             
             <div className="p-5 flex-1 overflow-y-auto space-y-4">
               <div>
-                <label className="block text-xs font-semibold mb-1">Título del Trabajo</label>
+                <label className="block text-xs font-semibold mb-1">TÃ­tulo del Trabajo</label>
                 <input
                   type="text"
                   value={newTrabajoData.titulo}
@@ -2437,7 +2447,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                   onClick={() => setNewTrabajoData({...newTrabajoData, tareas: [...newTrabajoData.tareas, ""]})}
                   className="text-xs text-primary hover:underline font-semibold mt-1 block"
                 >
-                  + Añadir tarea al checklist
+                  + AÃ±adir tarea al checklist
                 </button>
               </div>
             </div>
