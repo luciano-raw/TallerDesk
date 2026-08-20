@@ -140,8 +140,11 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
     nombre: "",
     sku: "",
     tipo: "REPUESTO" as "REPUESTO" | "INSUMO",
+    unidad: "UNIDAD",
     cantidad: 0,
+    stockMinimo: 0,
     precioUnitario: 0,
+    precioVenta: 0,
     ubicacion: ""
   });
 
@@ -320,7 +323,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           if (res.success) {
             triggerNotification("🟢 Nuevo ítem registrado en Bodega.");
             setShowAddBodegaModal(false);
-            setNewBodegaItem({ nombre: "", sku: "", tipo: "REPUESTO", cantidad: 0, precioUnitario: 0, ubicacion: "" });
+            setNewBodegaItem({ nombre: "", sku: "", tipo: "REPUESTO", unidad: "UNIDAD", cantidad: 0, stockMinimo: 0, precioUnitario: 0, precioVenta: 0, ubicacion: "" });
             await fetchDbData();
           } else {
             triggerNotification(`❌ Error: ${res.error}`);
@@ -341,7 +344,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           triggerNotification("🟢 Ítem agregado a Bodega (Demo).");
         }
         setShowAddBodegaModal(false);
-        setNewBodegaItem({ nombre: "", sku: "", tipo: "REPUESTO", cantidad: 0, precioUnitario: 0, ubicacion: "" });
+        setNewBodegaItem({ nombre: "", sku: "", tipo: "REPUESTO", unidad: "UNIDAD", cantidad: 0, stockMinimo: 0, precioUnitario: 0, precioVenta: 0, ubicacion: "" });
       }
     } catch (err: any) {
       triggerNotification(`❌ Error: ${err.message}`);
@@ -1415,7 +1418,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 <button
                 onClick={() => {
                   setEditingBodegaItem(null);
-                  setNewBodegaItem({ nombre: "", sku: "", tipo: "REPUESTO", cantidad: 0, precioUnitario: 0, ubicacion: "" });
+                  setNewBodegaItem({ nombre: "", sku: "", tipo: "REPUESTO", unidad: "UNIDAD", cantidad: 0, stockMinimo: 0, precioUnitario: 0, precioVenta: 0, ubicacion: "" });
                   setShowAddBodegaModal(true);
                 }}
                 className="h-9 px-4 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/95 flex items-center gap-1.5 transition-all cursor-pointer"
@@ -1469,9 +1472,10 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                     <tr className="bg-muted/50 border-b border-border text-muted-foreground font-bold uppercase tracking-wider">
                       <th className="p-4">SKU</th>
                       <th className="p-4">Nombre de Ítem</th>
-                      <th className="p-4">Tipo</th>
-                      <th className="p-4 text-center">Cantidad en Stock</th>
-                      <th className="p-4 text-right">Precio Unitario</th>
+                      <th className="p-4 text-center">Tipo / Unidad</th>
+                      <th className="p-4 text-center">Stock (Fís. / Rsv. / Disp.)</th>
+                      <th className="p-4 text-right">Precio Costo</th>
+                      <th className="p-4 text-right">Precio Venta</th>
                       <th className="p-4">Ubicación</th>
                       {(roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE") || permisos?.CAN_MANAGE_BODEGA) && (
                         <th className="p-4 text-right">Acciones</th>
@@ -1489,33 +1493,46 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                         <tr key={item.id} className="hover:bg-muted/20 transition-colors">
                           <td className="p-4 font-mono font-bold text-muted-foreground">{item.sku || "N/A"}</td>
                           <td className="p-4 font-semibold text-foreground">{item.nombre}</td>
-                          <td className="p-4">
-                            <span className={`inline-block text-[9px] font-extrabold px-1.5 py-0.2 rounded uppercase tracking-wider ${
-                              item.tipo === "REPUESTO" ? "bg-green-600/10 text-green-500" : "bg-blue-600/10 text-blue-500"
-                            }`}>
-                              {item.tipo}
-                            </span>
-                          </td>
                           <td className="p-4 text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              <button
-                                onClick={() => handleAdjustStock(item.id, -1)}
-                                className="w-5 h-5 rounded bg-muted hover:bg-muted/80 text-foreground font-bold text-xs flex items-center justify-center cursor-pointer"
-                              >
-                                -
-                              </button>
-                              <span className={`font-black text-sm px-2 ${item.cantidad === 0 ? "text-red-500 font-extrabold" : item.cantidad <= 2 ? "text-amber-500" : "text-foreground"}`}>
-                                {item.cantidad}
+                            <div className="flex flex-col gap-1 items-center justify-center">
+                              <span className={`inline-block text-[9px] font-extrabold px-1.5 py-0.2 rounded uppercase tracking-wider ${
+                                item.tipo === "REPUESTO" ? "bg-green-600/10 text-green-500" : "bg-blue-600/10 text-blue-500"
+                              }`}>
+                                {item.tipo}
                               </span>
-                              <button
-                                onClick={() => handleAdjustStock(item.id, 1)}
-                                className="w-5 h-5 rounded bg-muted hover:bg-muted/80 text-foreground font-bold text-xs flex items-center justify-center cursor-pointer"
-                              >
-                                +
-                              </button>
+                              <span className="text-[10px] text-muted-foreground uppercase">{item.unidad || "UNIDAD"}</span>
                             </div>
                           </td>
-                          <td className="p-4 text-right font-extrabold">${item.precioUnitario.toLocaleString("es-CL")}</td>
+                          <td className="p-4">
+                            <div className="flex flex-col items-center justify-center gap-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-muted-foreground">Físico:</span>
+                                <button
+                                  onClick={() => handleAdjustStock(item.id, -1)}
+                                  className="w-4 h-4 rounded bg-muted hover:bg-muted/80 text-foreground font-bold text-[10px] flex items-center justify-center cursor-pointer"
+                                >
+                                  -
+                                </button>
+                                <span className={`font-black text-sm px-1 ${
+                                  (item.cantidad - (item.stockReservado || 0)) <= (item.stockMinimo || 0) ? "text-red-500 font-extrabold" : "text-foreground"
+                                }`}>
+                                  {item.cantidad}
+                                </span>
+                                <button
+                                  onClick={() => handleAdjustStock(item.id, 1)}
+                                  className="w-4 h-4 rounded bg-muted hover:bg-muted/80 text-foreground font-bold text-[10px] flex items-center justify-center cursor-pointer"
+                                >
+                                  +
+                                </button>
+                              </div>
+                              <div className="flex gap-3 text-[10px] font-medium">
+                                <span className="text-amber-500" title="Stock Reservado en OTs">Rsv: {item.stockReservado || 0}</span>
+                                <span className="text-blue-500 font-bold" title="Stock Disponible">Disp: {item.cantidad - (item.stockReservado || 0)}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-4 text-right font-semibold text-muted-foreground">${Number(item.precioUnitario || 0).toLocaleString("es-CL")}</td>
+                          <td className="p-4 text-right font-extrabold text-foreground">${Number(item.precioVenta || 0).toLocaleString("es-CL")}</td>
                           <td className="p-4 font-medium text-muted-foreground">{item.ubicacion || "Bodega General"}</td>
                           {(roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE") || permisos?.CAN_MANAGE_BODEGA) && (
                             <td className="p-4 text-right space-x-2">
@@ -1525,10 +1542,13 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                                 setNewBodegaItem({
                                   nombre: item.nombre,
                                   sku: item.sku || "",
-                                  tipo: item.tipo,
+                                  tipo: item.tipo as "REPUESTO" | "INSUMO",
                                   cantidad: item.cantidad,
+                                  stockMinimo: item.stockMinimo || 0,
                                   precioUnitario: item.precioUnitario,
-                                  ubicacion: item.ubicacion || ""
+                                  precioVenta: item.precioVenta || 0,
+                                  ubicacion: item.ubicacion || "",
+                                  unidad: item.unidad || "UNIDAD"
                                 });
                                 setShowAddBodegaModal(true);
                               }}
@@ -1812,7 +1832,22 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold mb-1">Cantidad Inicial *</label>
+                  <label className="block font-semibold mb-1">Unidad de Medida</label>
+                  <select 
+                    value={newBodegaItem.unidad}
+                    onChange={(e) => setNewBodegaItem({ ...newBodegaItem, unidad: e.target.value })}
+                    className="w-full h-8 px-2 rounded-md border border-input bg-background focus:outline-none focus:border-primary"
+                  >
+                    <option value="UNIDAD">Unidad</option>
+                    <option value="LITRO">Litro</option>
+                    <option value="ML">Mililitro (ML)</option>
+                    <option value="KG">Kilogramo (KG)</option>
+                    <option value="METRO">Metro</option>
+                    <option value="CAJA">Caja</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Stock Inicial *</label>
                   <input 
                     type="number" 
                     required
@@ -1822,14 +1857,37 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                     className="w-full h-8 px-2 rounded-md border border-input bg-background focus:outline-none focus:border-primary"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block font-semibold mb-1">Precio Unitario ($) *</label>
+                  <label className="block font-semibold mb-1">Stock Mínimo</label>
+                  <input 
+                    type="number" 
+                    min={0}
+                    value={newBodegaItem.stockMinimo}
+                    onChange={(e) => setNewBodegaItem({ ...newBodegaItem, stockMinimo: Number(e.target.value) })}
+                    className="w-full h-8 px-2 rounded-md border border-input bg-background focus:outline-none focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Precio Costo ($) *</label>
                   <input 
                     type="number" 
                     required
                     min={0}
                     value={newBodegaItem.precioUnitario}
                     onChange={(e) => setNewBodegaItem({ ...newBodegaItem, precioUnitario: Number(e.target.value) })}
+                    className="w-full h-8 px-2 rounded-md border border-input bg-background focus:outline-none focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Precio Venta ($)</label>
+                  <input 
+                    type="number" 
+                    min={0}
+                    value={newBodegaItem.precioVenta}
+                    onChange={(e) => setNewBodegaItem({ ...newBodegaItem, precioVenta: Number(e.target.value) })}
                     className="w-full h-8 px-2 rounded-md border border-input bg-background focus:outline-none focus:border-primary"
                   />
                 </div>

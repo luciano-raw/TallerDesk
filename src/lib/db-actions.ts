@@ -269,22 +269,68 @@ export async function createOT(data: {
 
 export async function updateOTStatus(id: string, status: "INGRESADO" | "DIAGNOSTICO" | "PRESUPUESTADO" | "EN_PROGRESO" | "CONTROL_CALIDAD" | "LISTO_ENTREGA" | "ENTREGADO") {
   try {
+    const otPrev = await prisma.ordenTrabajo.findUnique({ where: { id } });
+    if (!otPrev) return { success: false, error: "OT no encontrada" };
+    
+    const wasFinalState = otPrev.status === "ENTREGADO" || otPrev.status === "LISTO_ENTREGA";
+    const isFinalState = status === "ENTREGADO" || status === "LISTO_ENTREGA";
+
     const ot = await prisma.ordenTrabajo.update({
       where: { id },
       data: { status },
-      include: { repuestos: { include: { repuesto: true } } }
+      include: { itemsPresupuesto: { include: { inventarioItem: true } } }
     });
     await logOTAction(id, `Estado cambiado de la orden a: ${status}`);
     
-    // Descontar inventario al entregar
-    if (status === "ENTREGADO" || status === "LISTO_ENTREGA") {
-      for (const req of ot.repuestos) {
-        if (req.repuesto) {
-          await prisma.inventarioItem.updateMany({
-            where: { sku: req.repuesto.codigo, tallerId: ot.tallerId },
+    // Descontar inventario al entrar a estado final desde un estado NO final
+    if (!wasFinalState && isFinalState) {
+      for (const item of ot.itemsPresupuesto) {
+        if (item.tipo === "REPUESTO" && item.inventarioItemId && item.inventarioItem) {
+          const match = item.descripcion.match(/^(\d+)x /);
+          const cantidad = match ? parseInt(match[1], 10) : 1;
+          
+          await prisma.inventarioItem.update({
+            where: { id: item.inventarioItemId },
             data: { 
-              cantidad: { decrement: req.cantidad },
-              stockReservado: { decrement: req.cantidad }
+              cantidad: { decrement: cantidad },
+              stockReservado: { decrement: cantidad }
+            }
+          });
+
+          await prisma.movimientoInventario.create({
+            data: {
+              tipo: "CONSUMO",
+              cantidad: cantidad,
+              costoUnitario: item.inventarioItem.precioUnitario,
+              referencia: ot.codigo,
+              inventarioItemId: item.inventarioItemId
+            }
+          });
+        }
+      }
+    }
+    // Revertir consumo al salir de un estado final a un estado NO final
+    else if (wasFinalState && !isFinalState) {
+      for (const item of ot.itemsPresupuesto) {
+        if (item.tipo === "REPUESTO" && item.inventarioItemId && item.inventarioItem) {
+          const match = item.descripcion.match(/^(\d+)x /);
+          const cantidad = match ? parseInt(match[1], 10) : 1;
+          
+          await prisma.inventarioItem.update({
+            where: { id: item.inventarioItemId },
+            data: { 
+              cantidad: { increment: cantidad },
+              stockReservado: { increment: cantidad }
+            }
+          });
+
+          await prisma.movimientoInventario.create({
+            data: {
+              tipo: "RESERVA", // Vuelve a estar reservado pero reponemos el físico
+              cantidad: cantidad,
+              costoUnitario: item.inventarioItem.precioUnitario,
+              referencia: ot.codigo + " (REVERSO CONSUMO)",
+              inventarioItemId: item.inventarioItemId
             }
           });
         }
@@ -343,7 +389,6 @@ export async function deleteOT(id: string) {
   try {
     await prisma.$transaction([
       prisma.fotoOT.deleteMany({ where: { ordenTrabajoId: id } }),
-      prisma.repuestoEnOT.deleteMany({ where: { ordenTrabajoId: id } }),
       prisma.tareaChecklist.deleteMany({ where: { ordenTrabajoId: id } }),
       prisma.ordenTrabajo.delete({ where: { id } })
     ]);
@@ -736,6 +781,12 @@ async function recalculateOTCosts(otId: string) {
 
 export async function addPresupuestoItem(data: { otId: string; tipo: "MANO_OBRA" | "REPUESTO"; descripcion: string; monto: number }) {
   try {
+    const ot = await prisma.ordenTrabajo.findUnique({ where: { id: data.otId } });
+    if (!ot) return { success: false, error: "OT no encontrada" };
+    if (ot.status === "ENTREGADO" || ot.status === "LISTO_ENTREGA") {
+      return { success: false, error: "No se puede modificar el presupuesto de una OT entregada o lista." };
+    }
+
     await prisma.itemPresupuesto.create({
       data: {
         tipo: data.tipo,
@@ -759,7 +810,36 @@ export async function addPresupuestoItem(data: { otId: string; tipo: "MANO_OBRA"
 
 export async function deletePresupuestoItem(id: string, otId: string) {
   try {
+    const ot = await prisma.ordenTrabajo.findUnique({ where: { id: otId } });
+    if (!ot) return { success: false, error: "OT no encontrada" };
+    if (ot.status === "ENTREGADO" || ot.status === "LISTO_ENTREGA") {
+      return { success: false, error: "No se puede modificar el presupuesto de una OT entregada o lista." };
+    }
+
     const item = await prisma.itemPresupuesto.findUnique({ where: { id } });
+    if (!item) return { success: false, error: "Ítem no encontrado" };
+    
+    // Si era un repuesto de bodega, liberar reserva
+    if (item.tipo === "REPUESTO" && item.inventarioItemId) {
+      const match = item.descripcion.match(/^(\d+)x /);
+      const cantidad = match ? parseInt(match[1], 10) : 1;
+      
+      const inventarioItem = await prisma.inventarioItem.update({
+        where: { id: item.inventarioItemId },
+        data: { stockReservado: { decrement: cantidad } }
+      });
+      
+      await prisma.movimientoInventario.create({
+        data: {
+          tipo: "LIBERACION",
+          cantidad: cantidad,
+          costoUnitario: inventarioItem.precioUnitario,
+          referencia: "Lib de OT",
+          inventarioItemId: item.inventarioItemId
+        }
+      });
+    }
+
     await prisma.itemPresupuesto.delete({
       where: { id }
     });
@@ -881,8 +961,11 @@ export async function createInventarioItem(data: {
   nombre: string;
   sku: string;
   tipo: "REPUESTO" | "INSUMO";
+  unidad?: string;
   cantidad: number;
+  stockMinimo?: number;
   precioUnitario: number;
+  precioVenta?: number;
   ubicacion?: string;
 }) {
   try {
@@ -892,11 +975,27 @@ export async function createInventarioItem(data: {
         nombre: data.nombre,
         sku: data.sku || null,
         tipo: data.tipo,
+        unidad: data.unidad || "UNIDAD",
         cantidad: data.cantidad,
+        stockMinimo: data.stockMinimo || 0,
         precioUnitario: data.precioUnitario,
+        precioVenta: data.precioVenta || 0.0,
         ubicacion: data.ubicacion || null
       }
     });
+
+    if (data.cantidad > 0) {
+      await prisma.movimientoInventario.create({
+        data: {
+          tipo: "ENTRADA",
+          cantidad: data.cantidad,
+          costoUnitario: data.precioUnitario,
+          referencia: "Stock Inicial",
+          inventarioItemId: item.id
+        }
+      });
+    }
+
     revalidatePath("/dashboard");
     return { success: true, item };
   } catch (error: any) {
@@ -909,22 +1008,43 @@ export async function updateInventarioItem(id: string, data: {
   nombre: string;
   sku: string;
   tipo: "REPUESTO" | "INSUMO";
+  unidad?: string;
   cantidad: number;
+  stockMinimo?: number;
   precioUnitario: number;
+  precioVenta?: number;
   ubicacion?: string;
 }) {
   try {
+    const oldItem = await prisma.inventarioItem.findUnique({ where: { id } });
     const item = await prisma.inventarioItem.update({
       where: { id },
       data: {
         nombre: data.nombre,
         sku: data.sku || null,
         tipo: data.tipo,
+        unidad: data.unidad,
         cantidad: data.cantidad,
+        stockMinimo: data.stockMinimo,
         precioUnitario: data.precioUnitario,
+        precioVenta: data.precioVenta,
         ubicacion: data.ubicacion || null
       }
     });
+
+    if (oldItem && data.cantidad !== oldItem.cantidad) {
+      const diff = data.cantidad - oldItem.cantidad;
+      await prisma.movimientoInventario.create({
+        data: {
+          tipo: diff > 0 ? "ENTRADA" : "SALIDA",
+          cantidad: Math.abs(diff),
+          costoUnitario: data.precioUnitario,
+          referencia: "Actualización manual",
+          inventarioItemId: item.id
+        }
+      });
+    }
+
     revalidatePath("/dashboard");
     return { success: true, item };
   } catch (error: any) {
@@ -953,6 +1073,19 @@ export async function adjustInventarioStock(id: string, cantidadCambio: number) 
       where: { id },
       data: { cantidad: nuevaCantidad }
     });
+
+    if (cantidadCambio !== 0) {
+      await prisma.movimientoInventario.create({
+        data: {
+          tipo: "AJUSTE",
+          cantidad: Math.abs(cantidadCambio),
+          costoUnitario: item.precioUnitario,
+          referencia: "Ajuste de inventario",
+          inventarioItemId: item.id
+        }
+      });
+    }
+
     revalidatePath("/dashboard");
     return { success: true, item: updated };
   } catch (error: any) {
@@ -1002,6 +1135,12 @@ export async function searchMarketplaceParts(query: string) {
 
 export async function asociarRepuestoAOT(otId: string, repuestoNombre: string, monto: number) {
   try {
+    const ot = await prisma.ordenTrabajo.findUnique({ where: { id: otId } });
+    if (!ot) return { success: false, error: "OT no encontrada." };
+    if (ot.status === "ENTREGADO" || ot.status === "LISTO_ENTREGA") {
+      return { success: false, error: "No se pueden añadir repuestos a una OT entregada o lista." };
+    }
+
     await prisma.itemPresupuesto.create({
       data: {
         tipo: "REPUESTO",
@@ -1105,10 +1244,7 @@ export async function getVehiculoHistory(vehiculoId: string) {
           orderBy: { createdAt: "desc" },
           include: {
             tecnico: true,
-            itemsPresupuesto: true,
-            repuestos: {
-              include: { repuesto: true }
-            }
+            itemsPresupuesto: true
           }
         },
         recomendaciones: {
@@ -1278,41 +1414,43 @@ export async function asociarBodegaAOT(otId: string, inventarioItemId: string, c
       return { success: false, error: "Stock disponible insuficiente." };
     }
 
+    const ot = await prisma.ordenTrabajo.findUnique({ where: { id: otId } });
+    if (!ot) return { success: false, error: "OT no encontrada." };
+    if (ot.status === "ENTREGADO" || ot.status === "LISTO_ENTREGA") {
+      return { success: false, error: "No se pueden añadir repuestos a una OT entregada o lista." };
+    }
+
     // Reservar stock
     await prisma.inventarioItem.update({
       where: { id: inventarioItemId },
       data: { stockReservado: { increment: cantidad } }
     });
 
-    // Encontrar si este repuesto existe en la base de datos de repuestos global, sino crearlo para la OT
-    let repuesto = await prisma.repuesto.findFirst({
-      where: { codigo: item.sku || item.nombre, tallerId: item.tallerId }
-    });
-
-    if (!repuesto) {
-      repuesto = await prisma.repuesto.create({
-        data: {
-          codigo: item.sku || item.nombre,
-          nombre: item.nombre,
-          stock: 9999,
-          precioCosto: item.precioUnitario,
-          precioVenta: item.precioUnitario,
-          tallerId: item.tallerId
-        }
-      });
-    }
-
-    await prisma.repuestoEnOT.create({
+    // Registrar en MovimientoInventario
+    await prisma.movimientoInventario.create({
       data: {
-        ordenTrabajoId: otId,
-        repuestoId: repuesto.id,
+        tipo: "RESERVA",
         cantidad: cantidad,
-        precioUnitario: item.precioUnitario
+        costoUnitario: item.precioUnitario,
+        referencia: ot.codigo,
+        inventarioItemId: inventarioItemId
       }
     });
 
-    // Añadirlo como ItemPresupuesto para sumarlo a la facturación visual de inmediato? 
-    // O esperar al Trabajo Adicional? Lo dejaremos solo como RepuestoEnOT por ahora.
+    // Añadirlo como ItemPresupuesto
+    const monto = Number(item.precioVenta) > 0 ? Number(item.precioVenta) * cantidad : Number(item.precioUnitario) * cantidad;
+    
+    await prisma.itemPresupuesto.create({
+      data: {
+        tipo: "REPUESTO",
+        descripcion: `${cantidad}x ${item.nombre}`,
+        monto: monto,
+        ordenTrabajoId: otId,
+        inventarioItemId: inventarioItemId
+      }
+    });
+
+    await recalculateOTCosts(otId);
     await logOTAction(otId, `Repuesto de bodega asignado: ${cantidad}x ${item.nombre}`);
     revalidatePath("/dashboard");
 

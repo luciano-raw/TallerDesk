@@ -42,7 +42,6 @@ model Taller {
   clientes   Cliente[]
   vehiculos  Vehiculo[]
   ots        OrdenTrabajo[]
-  repuestos  Repuesto[]
   inventario InventarioItem[]
 }
 
@@ -129,7 +128,6 @@ model OrdenTrabajo {
   taller   Taller @relation(fields: [tallerId], references: [id])
 
   fotos              FotoOT[]
-  repuestos          RepuestoEnOT[]
   checklist          TareaChecklist[]
   presupuestoDetalle String?
   presupuestoMonto   Decimal?          @default(0.0)
@@ -163,35 +161,6 @@ model FotoOT {
   createdAt DateTime @default(now())
 }
 
-// Inventario de repuestos del taller
-model Repuesto {
-  id          String  @id @default(uuid())
-  codigo      String // Código de parte
-  nombre      String
-  stock       Int
-  stockMinimo Int     @default(5)
-  precioCosto Decimal
-  precioVenta Decimal
-
-  tallerId String
-  taller   Taller @relation(fields: [tallerId], references: [id])
-
-  ots RepuestoEnOT[]
-
-  @@unique([codigo, tallerId]) // El código de repuesto es único por taller
-}
-
-// Tabla intermedia para registrar repuestos utilizados en una OT
-model RepuestoEnOT {
-  id             String       @id @default(uuid())
-  cantidad       Int
-  precioUnitario Decimal
-  ordenTrabajoId String
-  ordenTrabajo   OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id])
-  repuestoId     String
-  repuesto       Repuesto     @relation(fields: [repuestoId], references: [id])
-}
-
 // Tareas o checklist de la Orden de Trabajo
 model TareaChecklist {
   id             String       @id @default(uuid())
@@ -206,12 +175,14 @@ model TareaChecklist {
 
 // Items de presupuesto (Mano de Obra o Repuestos) con descripción y valores reales
 model ItemPresupuesto {
-  id             String       @id @default(uuid())
-  tipo           String // "MANO_OBRA" o "REPUESTO"
-  descripcion    String
-  monto          Decimal
-  ordenTrabajoId String
-  ordenTrabajo   OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Cascade)
+  id               String          @id @default(uuid())
+  tipo             String // "MANO_OBRA" o "REPUESTO"
+  descripcion      String
+  monto            Decimal
+  ordenTrabajoId   String
+  ordenTrabajo     OrdenTrabajo    @relation(fields: [ordenTrabajoId], references: [id], onDelete: Cascade)
+  inventarioItemId String?
+  inventarioItem   InventarioItem? @relation(fields: [inventarioItemId], references: [id])
 }
 
 // Historial de bitácora y auditoría de la OT
@@ -230,16 +201,35 @@ model InventarioItem {
   nombre         String
   sku            String?
   tipo           String // "REPUESTO" o "INSUMO"
-  cantidad       Int      @default(0)
+  unidad         String   @default("UNIDAD") // UNIDAD, LITRO, ML, KG, METRO, CAJA
+  cantidad       Int      @default(0) // Stock Físico
   stockReservado Int      @default(0) // Cantidad reservada en OTs activas
-  precioUnitario Decimal  @default(0.0)
+  stockMinimo    Int      @default(0) // Alerta de stock bajo
+  precioUnitario Decimal  @default(0.0) // Precio de Costo
+  precioVenta    Decimal  @default(0.0) // Precio de Venta al cliente
   ubicacion      String? // Ubicación física (ej: Estante A, Cajón 3)
   tallerId       String
   taller         Taller   @relation(fields: [tallerId], references: [id], onDelete: Cascade)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  movimientos MovimientoInventario[]
+  itemsEnOT   ItemPresupuesto[]
+
   @@unique([sku, tallerId])
+}
+
+// Historial de Movimientos de Inventario
+model MovimientoInventario {
+  id               String         @id @default(uuid())
+  tipo             String // ENTRADA, SALIDA, RESERVA, AJUSTE, LIBERACION, CONSUMO
+  cantidad         Int
+  costoUnitario    Decimal // Costo o precio registrado al momento del movimiento
+  referencia       String? // Notas, factura, o código de OT relacionada
+  usuarioId        String? // ID del trabajador que hizo el movimiento
+  inventarioItemId String
+  inventarioItem   InventarioItem @relation(fields: [inventarioItemId], references: [id], onDelete: Cascade)
+  createdAt        DateTime       @default(now())
 }
 
 // -------------------------------------------------------------
