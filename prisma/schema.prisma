@@ -24,6 +24,7 @@ enum StatusOT {
   CONTROL_CALIDAD
   LISTO_ENTREGA
   ENTREGADO
+  ANULADO
 }
 
 // Entidad que representa a cada taller suscrito al SaaS

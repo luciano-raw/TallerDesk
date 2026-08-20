@@ -187,6 +187,12 @@ export async function createOT(data: {
           tallerId: data.tallerId
         }
       });
+    } else {
+      // Actualizar nombre y teléfono si ya existe
+      cliente = await prisma.cliente.update({
+        where: { id: cliente.id },
+        data: { nombre: data.clienteNombre, telefono: data.clienteTelefono }
+      });
     }
 
     // 2. Buscar o crear vehículo
@@ -206,10 +212,10 @@ export async function createOT(data: {
         }
       });
     } else {
-      // Actualizar kilometraje del vehículo si ya existe
-      await prisma.vehiculo.update({
+      // Actualizar kilometraje, marca y modelo del vehículo si ya existe
+      vehiculo = await prisma.vehiculo.update({
         where: { id: vehiculo.id },
-        data: { kilometraje: data.kilometraje }
+        data: { kilometraje: data.kilometraje, marca: data.marca, modelo: data.modelo }
       });
     }
 
@@ -267,7 +273,7 @@ export async function createOT(data: {
   }
 }
 
-export async function updateOTStatus(id: string, status: "INGRESADO" | "DIAGNOSTICO" | "PRESUPUESTADO" | "EN_PROGRESO" | "CONTROL_CALIDAD" | "LISTO_ENTREGA" | "ENTREGADO") {
+export async function updateOTStatus(id: string, status: "INGRESADO" | "DIAGNOSTICO" | "PRESUPUESTADO" | "EN_PROGRESO" | "CONTROL_CALIDAD" | "LISTO_ENTREGA" | "ENTREGADO" | "ANULADO") {
   try {
     const otPrev = await prisma.ordenTrabajo.findUnique({ where: { id } });
     if (!otPrev) return { success: false, error: "OT no encontrada" };
@@ -387,11 +393,7 @@ export async function assignOTMecanico(id: string, tecnicoId: string | null) {
 
 export async function deleteOT(id: string) {
   try {
-    await prisma.$transaction([
-      prisma.fotoOT.deleteMany({ where: { ordenTrabajoId: id } }),
-      prisma.tareaChecklist.deleteMany({ where: { ordenTrabajoId: id } }),
-      prisma.ordenTrabajo.delete({ where: { id } })
-    ]);
+    await updateOTStatus(id, "ANULADO");
     revalidatePath("/dashboard");
     return { success: true };
   } catch (error: any) {

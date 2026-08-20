@@ -59,7 +59,7 @@ interface OT {
   patente: string;
   vehiculo: string;
   cliente: string;
-  status: "INGRESADO" | "DIAGNOSTICO" | "PRESUPUESTADO" | "EN_PROGRESO" | "CONTROL_CALIDAD" | "LISTO_ENTREGA" | "ENTREGADO";
+  status: "INGRESADO" | "DIAGNOSTICO" | "PRESUPUESTADO" | "EN_PROGRESO" | "CONTROL_CALIDAD" | "LISTO_ENTREGA" | "ENTREGADO" | "ANULADO";
   tecnico: string;
   tecnicoId?: string;
   costoManoObra: number;
@@ -786,7 +786,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   });
 
   const mechanicWorkloads = dbMecanicos.map(m => {
-    const activeOts = ots.filter(o => o.tecnicoId === m.id && o.status !== "ENTREGADO" && o.status !== "LISTO_ENTREGA").length;
+    const activeOts = ots.filter(o => o.tecnicoId === m.id && o.status !== "ENTREGADO" && o.status !== "LISTO_ENTREGA" && o.status !== "ANULADO").length;
     let statusLabel = "Disponible";
     let statusColor = "text-success bg-success/15";
     if (activeOts >= 3) {
@@ -884,7 +884,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           <div className="bg-card border border-border p-4 rounded-xl">
             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">Autos en Taller</p>
             <div className="flex items-center justify-between">
-              <p className="text-2xl font-black">{ots.filter(o => o.status !== "ENTREGADO").length}</p>
+              <p className="text-2xl font-black">{ots.filter(o => o.status !== "ENTREGADO" && o.status !== "ANULADO").length}</p>
               <Car size={20} className="text-primary" />
             </div>
           </div>
@@ -965,11 +965,11 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredOts.map((o) => (
-                    <tr key={o.id} className="hover:bg-muted/35 transition-colors">
+                    <tr key={o.id} className={`hover:bg-muted/35 transition-colors ${o.status === "ANULADO" ? "opacity-50 grayscale" : ""}`}>
                       <td className="p-4 font-bold text-primary">
                         <button
                           onClick={() => setSelectedDetailOT(o)}
-                          className="hover:underline hover:text-primary/80 transition-all font-extrabold cursor-pointer"
+                          className={`hover:underline hover:text-primary/80 transition-all font-extrabold cursor-pointer ${o.status === "ANULADO" ? "line-through text-muted-foreground" : ""}`}
                         >
                           {o.codigo}
                         </button>
@@ -1027,6 +1027,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                           <option value="CONTROL_CALIDAD">CONTROL CALIDAD</option>
                           <option value="LISTO_ENTREGA">LISTO ENTREGA</option>
                           <option value="ENTREGADO">ENTREGADO</option>
+                          <option value="ANULADO">ANULADO</option>
                         </select>
                       </td>
                       <td className="p-4">
@@ -1671,7 +1672,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                             className="w-full h-7 px-1.5 rounded border border-border bg-background text-[10px] focus:outline-none focus:border-primary"
                           >
                             <option value="">Selecciona OT...</option>
-                            {ots.filter(o => o.status !== "ENTREGADO").map(o => (
+                            {ots.filter(o => o.status !== "ENTREGADO" && o.status !== "ANULADO").map(o => (
                               <option key={o.id} value={o.id}>{o.codigo} ({o.vehiculo})</option>
                             ))}
                           </select>
