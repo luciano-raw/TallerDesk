@@ -215,7 +215,12 @@ export async function createOT(data: {
       // Actualizar kilometraje, marca y modelo del vehículo si ya existe
       vehiculo = await prisma.vehiculo.update({
         where: { id: vehiculo.id },
-        data: { kilometraje: data.kilometraje, marca: data.marca, modelo: data.modelo }
+        data: { 
+          kilometraje: data.kilometraje, 
+          marca: data.marca, 
+          modelo: data.modelo,
+          clienteId: cliente.id 
+        }
       });
     }
 
