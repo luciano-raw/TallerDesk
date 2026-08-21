@@ -53,6 +53,8 @@ import {
 } from "@/lib/db-actions";
 import DirectorioView from "./directorio-view";
 import AgendaView from "./agenda-view";
+import { ComboboxVehiculo } from "@/components/ui/combobox-vehiculo";
+import { getAllBrands, getModelsForBrand, getYears } from "@/lib/vehicle-data";
 
 interface OT {
   id: string;
@@ -82,12 +84,14 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const [workers, setWorkers] = useState<any[]>([]);
   const [newWorker, setNewWorker] = useState({ nombre: "", email: "", roles: ["TALLER_TECNICO"] as string[] });
   const [formClient, setFormClient] = useState({ nombre: "", rut: "", telefono: "" });
-  const [formVehiculo, setFormVehiculo] = useState({ patente: "", marca: "", modelo: "", kilometraje: "" });
+  const [formVehiculo, setFormVehiculo] = useState({ patente: "", marca: "", modelo: "", año: "", kilometraje: "" });
   const [formOT, setFormOT] = useState({ combustible: "50", observaciones: "", reservaId: "" });
   const [activeTab, setActiveTab] = useState<"ots" | "crear" | "trabajadores" | "bodega" | "marketplace" | "directorio" | "agenda">("ots");
   const [notification, setNotification] = useState<string | null>(null);
 
-
+  const brands = getAllBrands();
+  const models = getModelsForBrand(formVehiculo.marca);
+  const years = getYears();
   const [submitting, setSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
@@ -601,7 +605,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
 
   const handleConvertToOT = (reserva: any) => {
     setFormClient({ nombre: reserva.clienteNombre, rut: reserva.clienteRut || "", telefono: reserva.clienteTelefono });
-    setFormVehiculo({ patente: reserva.patente, marca: reserva.marca, modelo: reserva.modelo, kilometraje: "" });
+    setFormVehiculo({ patente: reserva.patente, marca: reserva.marca, modelo: reserva.modelo, año: "", kilometraje: "" });
     setFormOT({ combustible: "50", observaciones: reserva.observaciones || `Servicio agendado: ${reserva.tipoServicio}`, reservaId: reserva.id });
     setActiveTab("crear");
   };
@@ -627,6 +631,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           patente: formVehiculo.patente.toUpperCase(),
           marca: formVehiculo.marca,
           modelo: formVehiculo.modelo,
+          anio: parseInt(formVehiculo.año) || undefined,
           kilometraje: Number(formVehiculo.kilometraje || 0),
           combustible: Number(formOT.combustible || 50),
           observaciones: formOT.observaciones,
@@ -638,7 +643,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           fetchDbData();
           setActiveTab("ots");
           setFormClient({ nombre: "", rut: "", telefono: "" });
-          setFormVehiculo({ patente: "", marca: "", modelo: "", kilometraje: "" });
+          setFormVehiculo({ patente: "", marca: "", modelo: "", año: "", kilometraje: "" });
           setFormOT({ combustible: "50", observaciones: "", reservaId: "" });
         } else {
           triggerNotification(`Error al crear OT: ${res.error}`);
@@ -662,7 +667,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         triggerNotification(`¡Orden ${nuevaOT.codigo} creada con éxito!`);
         setActiveTab("ots");
         setFormClient({ nombre: "", rut: "", telefono: "" });
-        setFormVehiculo({ patente: "", marca: "", modelo: "", kilometraje: "" });
+        setFormVehiculo({ patente: "", marca: "", modelo: "", año: "", kilometraje: "" });
         setFormOT({ combustible: "50", observaciones: "", reservaId: "" });
       }
     } catch (err: any) {
@@ -933,8 +938,8 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         </div>
 
         {activeTab === "ots" && (
-          <div className={`grid grid-cols-1 ${roles.includes("TALLER_RECEP") ? "lg:grid-cols-4" : "lg:grid-cols-1"} gap-6`}>
-            <div className={`bg-card border border-border rounded-xl shadow-sm overflow-hidden ${roles.includes("TALLER_RECEP") ? "lg:col-span-3" : ""}`}>
+          <div className={`grid grid-cols-1 ${roles.includes("TALLER_RECEP") ? "xl:grid-cols-[1fr_300px] lg:grid-cols-[1fr_250px]" : ""} gap-6`}>
+            <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden min-w-0">
               <div className="p-5 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <h2 className="font-bold text-base">Órdenes de Trabajo Activas</h2>
                 <div className="flex flex-col sm:flex-row gap-3">
@@ -1209,25 +1214,30 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold mb-1">Marca *</label>
-                    <input 
-                      type="text" 
-                      required
-                      placeholder="Ej. Suzuki"
+                    <ComboboxVehiculo 
+                      label="Marca *"
+                      placeholder="Ej. TOYOTA"
                       value={formVehiculo.marca}
-                      onChange={(e) => setFormVehiculo({ ...formVehiculo, marca: e.target.value })}
-                      className="w-full h-9 px-3 rounded-lg border border-input bg-background text-xs focus:outline-none focus:border-primary"
+                      onChange={(val) => setFormVehiculo({ ...formVehiculo, marca: val, modelo: "" })}
+                      options={brands}
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold mb-1">Modelo *</label>
-                    <input 
-                      type="text" 
-                      required
-                      placeholder="Ej. Swift"
+                    <ComboboxVehiculo 
+                      label="Modelo *"
+                      placeholder="Ej. YARIS"
                       value={formVehiculo.modelo}
-                      onChange={(e) => setFormVehiculo({ ...formVehiculo, modelo: e.target.value })}
-                      className="w-full h-9 px-3 rounded-lg border border-input bg-background text-xs focus:outline-none focus:border-primary"
+                      onChange={(val) => setFormVehiculo({ ...formVehiculo, modelo: val })}
+                      options={models}
+                    />
+                  </div>
+                  <div>
+                    <ComboboxVehiculo 
+                      label="Año"
+                      placeholder="Ej. 2020"
+                      value={formVehiculo.año}
+                      onChange={(val) => setFormVehiculo({ ...formVehiculo, año: val })}
+                      options={years}
                     />
                   </div>
                   <div>

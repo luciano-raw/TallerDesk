@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { Calendar, Clock, Car, User, Settings, CheckCircle2, AlertCircle, Plus, X, ArrowRight } from "lucide-react";
 import { getReservas, createReserva, updateReservaEstado, getTallerLimiteReservas, updateLimiteReservas } from "@/lib/db-actions";
+import { ComboboxVehiculo } from "@/components/ui/combobox-vehiculo";
+import { getAllBrands, getModelsForBrand } from "@/lib/vehicle-data";
 
 export default function AgendaView({ tallerId, readOnly = false, onConvertToOT }: { tallerId: string, readOnly?: boolean, onConvertToOT: (reserva: any) => void }) {
   const [reservas, setReservas] = useState<any[]>([]);
@@ -10,6 +12,8 @@ export default function AgendaView({ tallerId, readOnly = false, onConvertToOT }
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   
   const [limiteDiario, setLimiteDiario] = useState(10);
+  const [horaApertura, setHoraApertura] = useState("08:00");
+  const [horaCierre, setHoraCierre] = useState("19:00");
   const [showSettings, setShowSettings] = useState(false);
   
   const [showNewModal, setShowNewModal] = useState(false);
@@ -36,13 +40,15 @@ export default function AgendaView({ tallerId, readOnly = false, onConvertToOT }
     const end = new Date(selectedDate);
     end.setHours(23, 59, 59, 999);
     
-    const [res, limite] = await Promise.all([
+    const [res, config] = await Promise.all([
       getReservas(tallerId, start, end),
       getTallerLimiteReservas(tallerId)
     ]);
     
     setReservas(res);
-    setLimiteDiario(limite);
+    setLimiteDiario(config.limite);
+    setHoraApertura(config.horaApertura);
+    setHoraCierre(config.horaCierre);
     setLoading(false);
   };
 
@@ -64,7 +70,7 @@ export default function AgendaView({ tallerId, readOnly = false, onConvertToOT }
 
     if (res.success) {
       setShowNewModal(false);
-      setNewReserva({ clienteNombre: "", clienteTelefono: "", clienteRut: "", patente: "", marca: "", modelo: "", hora: "10:00", tipoServicio: "", observaciones: "" });
+      setNewReserva({ clienteNombre: "", clienteTelefono: "", clienteRut: "", patente: "", marca: "", modelo: "", hora: horaApertura, tipoServicio: "", observaciones: "" });
       fetchData();
     } else {
       alert(res.error);
@@ -78,25 +84,32 @@ export default function AgendaView({ tallerId, readOnly = false, onConvertToOT }
   };
 
   const handleUpdateLimite = async () => {
-    await updateLimiteReservas(tallerId, limiteDiario);
+    await updateLimiteReservas(tallerId, limiteDiario, horaApertura, horaCierre);
     setShowSettings(false);
   };
 
   const timeSlots = [];
-  for (let i = 8; i <= 19; i++) {
+  const startHour = parseInt(horaApertura.split(":")[0]);
+  const endHour = parseInt(horaCierre.split(":")[0]);
+  
+  for (let i = startHour; i <= endHour; i++) {
     for (let j = 0; j < 60; j += 15) {
+      if (i === endHour && j > 0) continue; // No exceder la hora exacta de cierre si es en punto
       const hh = i.toString().padStart(2, "0");
       const mm = j.toString().padStart(2, "0");
       timeSlots.push(`${hh}:${mm}`);
     }
   }
 
+  const brands = getAllBrands();
+  const models = getModelsForBrand(newReserva.marca);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="font-bold text-lg">Agenda del Taller</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Gestiona las citas e ingreso de vehículos.</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Gestiona las citas e ingreso de vehículos. Horario: {horaApertura} a {horaCierre}</p>
         </div>
         {!readOnly && (
           <div className="flex gap-2">
@@ -104,10 +117,13 @@ export default function AgendaView({ tallerId, readOnly = false, onConvertToOT }
               onClick={() => setShowSettings(true)}
               className="bg-muted text-muted-foreground px-4 py-2 rounded-lg text-xs font-semibold hover:bg-muted/80 flex items-center gap-2"
             >
-              <Settings size={14} /> Configurar Límite
+              <Settings size={14} /> Configuración
             </button>
             <button 
-              onClick={() => setShowNewModal(true)}
+              onClick={() => {
+                setNewReserva({...newReserva, hora: horaApertura});
+                setShowNewModal(true);
+              }}
               className="bg-primary text-white px-4 py-2 rounded-lg text-xs font-semibold hover:bg-primary/90 flex items-center gap-2 shadow-sm"
             >
               <Plus size={14} /> Nueva Cita
@@ -193,6 +209,26 @@ export default function AgendaView({ tallerId, readOnly = false, onConvertToOT }
               <button onClick={() => setShowSettings(false)} className="text-muted-foreground hover:text-foreground"><X size={18} /></button>
             </div>
             <div className="p-4 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Hora de Apertura</label>
+                  <input 
+                    type="time" 
+                    value={horaApertura} 
+                    onChange={e => setHoraApertura(e.target.value)} 
+                    className="w-full p-2 rounded-lg border border-input bg-background text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Hora de Cierre</label>
+                  <input 
+                    type="time" 
+                    value={horaCierre} 
+                    onChange={e => setHoraCierre(e.target.value)} 
+                    className="w-full p-2 rounded-lg border border-input bg-background text-sm"
+                  />
+                </div>
+              </div>
               <div>
                 <label className="block text-xs font-semibold mb-1">Límite Diario de Reservas</label>
                 <input 
@@ -204,7 +240,7 @@ export default function AgendaView({ tallerId, readOnly = false, onConvertToOT }
               </div>
             </div>
             <div className="p-4 border-t border-border bg-muted/30 flex justify-end">
-              <button onClick={handleUpdateLimite} className="bg-primary text-white px-4 py-2 rounded-lg text-xs font-semibold">Guardar</button>
+              <button onClick={handleUpdateLimite} className="bg-primary text-white px-4 py-2 rounded-lg text-xs font-semibold">Guardar Cambios</button>
             </div>
           </div>
         </div>
@@ -220,15 +256,26 @@ export default function AgendaView({ tallerId, readOnly = false, onConvertToOT }
             </div>
             <div className="p-4 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="col-span-2">
                   <label className="block text-xs font-semibold mb-1">Patente</label>
                   <input type="text" value={newReserva.patente} onChange={e => setNewReserva({...newReserva, patente: e.target.value})} className="w-full p-2 rounded-lg border border-input bg-background text-sm uppercase" placeholder="AAAA11" />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Marca / Modelo</label>
-                  <div className="flex gap-2">
-                    <input type="text" value={newReserva.marca} onChange={e => setNewReserva({...newReserva, marca: e.target.value})} className="w-1/2 p-2 rounded-lg border border-input bg-background text-sm" placeholder="Marca" />
-                    <input type="text" value={newReserva.modelo} onChange={e => setNewReserva({...newReserva, modelo: e.target.value})} className="w-1/2 p-2 rounded-lg border border-input bg-background text-sm" placeholder="Modelo" />
+                <div className="col-span-2">
+                  <div className="grid grid-cols-2 gap-4">
+                    <ComboboxVehiculo 
+                      label="Marca"
+                      placeholder="Ej. TOYOTA"
+                      value={newReserva.marca}
+                      onChange={(val) => setNewReserva({...newReserva, marca: val, modelo: ""})}
+                      options={brands}
+                    />
+                    <ComboboxVehiculo 
+                      label="Modelo"
+                      placeholder="Ej. YARIS"
+                      value={newReserva.modelo}
+                      onChange={(val) => setNewReserva({...newReserva, modelo: val})}
+                      options={models}
+                    />
                   </div>
                 </div>
                 <div>
