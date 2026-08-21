@@ -46,8 +46,6 @@ model Taller {
   inventario InventarioItem[]
   reservas   Reserva[]
   limiteReservasDiarias Int @default(10) // Límite de vehículos que se pueden agendar en un solo día
-  horaApertura String @default("08:00")
-  horaCierre   String @default("19:00")
 }
 
 // Usuarios vinculados a Clerk y un taller respectivo (excepto Super Admins)
