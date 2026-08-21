@@ -59,7 +59,7 @@ export function ComboboxVehiculo({ label, placeholder, value, onChange, options 
             setIsOpen(true);
           }}
           onBlur={handleBlur}
-          className="W-full h-9 px-3 rounded-lg border border-input bg-background text-xs focus:outline-none focus:border-primary uppercase"
+          className="w-full h-9 px-3 rounded-lg border border-input bg-background text-xs focus:outline-none focus:border-primary uppercase"
         />
         <div 
           className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
@@ -69,7 +69,7 @@ export function ComboboxVehiculo({ label, placeholder, value, onChange, options 
       </div>
 
       {isOpen && isFocused && (
-        <div className="absolute y-50 w-full bg-card border border-border mt-1 rounded-md shadow-md max-h-60 overflow-auto">
+        <div className="absolute z-50 w-full bg-card border border-border mt-1 rounded-md shadow-md max-h-60 overflow-auto">
           {filteredOptions.length > 0 ? (
             filteredOptions.map((option) => (
               <div
@@ -85,7 +85,7 @@ export function ComboboxVehiculo({ label, placeholder, value, onChange, options 
             ))
           ) : (
             <div className="px-3 py-2 text-xs text-muted-foreground italic">
-              Se guardapÃ¡ "{search.toUpperCase()}"
+              Se guardará "{search.toUpperCase()}"
             </div>
           )}
         </div>
