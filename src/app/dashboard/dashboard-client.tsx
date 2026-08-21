@@ -128,7 +128,9 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
 
 
   const [selectedDetailOT, setSelectedDetailOT] = useState<any>(null);
-  const [newCostItemType, setNewCostItemType] = useState<"MANO_OBRA" | "REPUESTO">("MANO_OBRA");
+  const [newCostItemType, setNewCostItemType] = useState<"MANO_OBRA" | "REPUESTO" | "REPUESTO_BODEGA">("MANO_OBRA");
+  const [newCostBodegaId, setNewCostBodegaId] = useState("");
+  const [newCostCantidad, setNewCostCantidad] = useState("1");
   const [newCostItemDesc, setNewCostItemDesc] = useState("");
   const [newCostItemMonto, setNewCostItemMonto] = useState("");
   const [newAdicionalDetalle, setNewAdicionalDetalle] = useState("");
@@ -208,6 +210,40 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
 
   const handleAddCostItem = async () => {
     if (!activeManageCostsOT) return;
+    
+    if (newCostItemType === "REPUESTO_BODEGA") {
+      if (!newCostBodegaId || !newCostCantidad) {
+        triggerNotification("⚠️ Selecciona un repuesto de bodega y su cantidad.");
+        return;
+      }
+      const cantidad = Number(newCostCantidad);
+      if (isNaN(cantidad) || cantidad <= 0) {
+        triggerNotification("⚠️ Cantidad inválida.");
+        return;
+      }
+      setIsAddingItem(true);
+      try {
+        if (!isDemoMode) {
+          const res = await asociarBodegaAOT(activeManageCostsOT.id, newCostBodegaId, cantidad);
+          if (res.success) {
+            triggerNotification("🟢 Repuesto de bodega descontado y agregado a la OT.");
+            await fetchDbData(activeManageCostsOT.id);
+            setNewCostBodegaId("");
+            setNewCostCantidad("1");
+          } else {
+            triggerNotification(`❌ Error: ${res.error}`);
+          }
+        } else {
+          triggerNotification("🟢 Repuesto agregado (Demo).");
+        }
+      } catch (err: any) {
+        triggerNotification(`❌ Error: ${err.message}`);
+      } finally {
+        setIsAddingItem(false);
+      }
+      return;
+    }
+
     if (!newCostItemDesc || !newCostItemMonto) {
       triggerNotification("⚠️ Completa descripción y monto.");
       return;
@@ -1982,39 +2018,77 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 {/* Add Item Form */}
                 <div className="bg-muted/30 p-4 rounded-xl border border-border space-y-3">
                   <p className="text-[10px] font-bold text-muted-foreground uppercase">Agregar Nuevo Ítem</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[9px] font-semibold mb-1">Tipo</label>
-                      <select 
-                        value={newCostItemType}
-                        onChange={(e) => setNewCostItemType(e.target.value as any)}
-                        className="w-full h-8 px-2 rounded-md border border-input bg-background text-[11px] focus:outline-none focus:border-primary"
-                      >
-                        <option value="MANO_OBRA">Mano de Obra (Servicio)</option>
-                        <option value="REPUESTO">Repuesto</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-semibold mb-1">Monto (CLP)</label>
-                      <input 
-                        type="number"
-                        placeholder="Ej. 25000"
-                        value={newCostItemMonto}
-                        onChange={(e) => setNewCostItemMonto(e.target.value)}
-                        className="w-full h-8 px-2 rounded-md border border-input bg-background text-[11px] focus:outline-none focus:border-primary"
-                      />
-                    </div>
-                  </div>
                   <div>
-                    <label className="block text-[9px] font-semibold mb-1">Detalle / Nota explicativa</label>
-                    <input 
-                      type="text"
-                      placeholder="Ej. Pastillas de freno delanteras Bosch"
-                      value={newCostItemDesc}
-                      onChange={(e) => setNewCostItemDesc(e.target.value)}
-                      className="w-full h-8 px-2 rounded-md border border-input bg-background text-[11px] focus:outline-none focus:border-primary"
-                    />
+                    <label className="block text-[9px] font-semibold mb-1">Tipo</label>
+                    <select 
+                      value={newCostItemType}
+                      onChange={(e) => {
+                        setNewCostItemType(e.target.value as any);
+                        setNewCostBodegaId("");
+                        setNewCostItemDesc("");
+                      }}
+                      className="w-full h-8 px-2 rounded-md border border-input bg-background text-[11px] focus:outline-none focus:border-primary mb-2"
+                    >
+                      <option value="MANO_OBRA">Mano de Obra (Servicio)</option>
+                      <option value="REPUESTO">Repuesto (Independiente)</option>
+                      <option value="REPUESTO_BODEGA">Repuesto (Desde Bodega - Descuenta Stock)</option>
+                    </select>
                   </div>
+
+                  {newCostItemType === "REPUESTO_BODEGA" ? (
+                    <div className="grid grid-cols-[1fr_80px] gap-2 mb-2">
+                      <div>
+                        <label className="block text-[9px] font-semibold mb-1">Repuesto en Bodega</label>
+                        <select 
+                          value={newCostBodegaId}
+                          onChange={(e) => setNewCostBodegaId(e.target.value)}
+                          className="w-full h-8 px-2 rounded-md border border-input bg-background text-[11px] focus:outline-none focus:border-primary"
+                        >
+                          <option value="">Selecciona un repuesto...</option>
+                          {inventarioItems
+                            .filter(i => i.tipo === "REPUESTO" && i.cantidad - (i.stockReservado || 0) > 0)
+                            .map(i => (
+                              <option key={i.id} value={i.id}>
+                                {i.nombre} (Disp: {i.cantidad - (i.stockReservado || 0)}) - ${Number(i.precioVenta || i.precioUnitario).toLocaleString("es-CL")}
+                              </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-semibold mb-1">Cantidad</label>
+                        <input 
+                          type="number"
+                          min="1"
+                          value={newCostCantidad}
+                          onChange={(e) => setNewCostCantidad(e.target.value)}
+                          className="w-full h-8 px-2 rounded-md border border-input bg-background text-[11px] focus:outline-none focus:border-primary"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mb-2">
+                        <label className="block text-[9px] font-semibold mb-1">Monto (CLP)</label>
+                        <input 
+                          type="number"
+                          placeholder="Ej. 25000"
+                          value={newCostItemMonto}
+                          onChange={(e) => setNewCostItemMonto(e.target.value)}
+                          className="w-full h-8 px-2 rounded-md border border-input bg-background text-[11px] focus:outline-none focus:border-primary"
+                        />
+                      </div>
+                      <div className="mb-2">
+                        <label className="block text-[9px] font-semibold mb-1">Detalle / Nota explicativa</label>
+                        <input 
+                          type="text"
+                          placeholder="Ej. Pastillas de freno delanteras Bosch"
+                          value={newCostItemDesc}
+                          onChange={(e) => setNewCostItemDesc(e.target.value)}
+                          className="w-full h-8 px-2 rounded-md border border-input bg-background text-[11px] focus:outline-none focus:border-primary"
+                        />
+                      </div>
+                    </>
+                  )}
                   <button
                     onClick={handleAddCostItem}
                     disabled={isAddingItem}

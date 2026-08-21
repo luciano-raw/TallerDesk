@@ -108,7 +108,7 @@ export default function ClienteSeguimientoPage() {
               id: ta.id,
               detalle: ta.descripcion,
               monto: ta.monto,
-              estado: ta.estado
+              estado: ta.estadoAprobacion
             })) : [],
             trabajos: data.trabajos ? data.trabajos.map((t: any) => ({
               titulo: t.titulo,
@@ -269,7 +269,7 @@ export default function ClienteSeguimientoPage() {
               <span className="font-extrabold text-sm text-primary">${ta.monto.toLocaleString("es-CL")} CLP</span>
             </div>
 
-            {ta.estado === "PENDIENTE" ? (
+            {ta.estado === "PENDIENTE_APROBACION" ? (
               <div className="grid grid-cols-2 gap-3 pt-1">
                 <button
                   onClick={() => handleRechazarPresupuesto(ta.id)}
