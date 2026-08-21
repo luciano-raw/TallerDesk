@@ -938,7 +938,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         </div>
 
         {activeTab === "ots" && (
-          <div className={`grid grid-cols-1 ${roles.includes("TALLER_RECEP") ? "xl:grid-cols-[1fr_300px] lg:grid-cols-[1fr_250px]" : ""} gap-6`}>
+          <div className={`grid grid-cols-1 ${roles.includes("TALLER_RECEP") ? "xl:grid-cols-[1fr_260px] lg:grid-cols-[1fr_220px]" : ""} gap-6`}>
             <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden min-w-0">
               <div className="p-5 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <h2 className="font-bold text-base">Órdenes de Trabajo Activas</h2>
@@ -975,20 +975,20 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-muted/50 border-b border-border text-muted-foreground font-bold uppercase tracking-wider">
-                    <th className="p-4">Código OT</th>
-                    <th className="p-4">Vehículo / Patente</th>
-                    <th className="p-4">Cliente</th>
-                    <th className="p-4">Asignado A</th>
-                    <th className="p-4">Estado OT</th>
-                    <th className="p-4">Costos acumulados</th>
-                    <th className="p-4 text-center">Seguimiento</th>
-                    <th className="p-4 text-right">Acciones</th>
+                    <th className="px-2 py-3">Código OT</th>
+                    <th className="px-2 py-3">Vehículo / Patente</th>
+                    <th className="px-2 py-3">Cliente</th>
+                    <th className="px-2 py-3">Asignado A</th>
+                    <th className="px-2 py-3">Estado OT</th>
+                    <th className="px-2 py-3">Costos acumulados</th>
+                    <th className="px-2 py-3 text-center">Seguimiento</th>
+                    <th className="px-2 py-3 text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredOts.map((o) => (
                     <tr key={o.id} className={`hover:bg-muted/35 transition-colors ${o.status === "ANULADO" ? "opacity-50 grayscale" : ""}`}>
-                      <td className="p-4 font-bold text-primary">
+                      <td className="px-2 py-3 font-bold text-primary">
                         <button
                           onClick={() => setSelectedDetailOT(o)}
                           className={`hover:underline hover:text-primary/80 transition-all font-extrabold cursor-pointer ${o.status === "ANULADO" ? "line-through text-muted-foreground" : ""}`}
@@ -996,12 +996,12 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                           {o.codigo}
                         </button>
                       </td>
-                      <td className="p-4 font-semibold">
+                      <td className="px-2 py-3 font-semibold">
                         <span className="block">{o.vehiculo}</span>
                         <span className="text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded mt-1 inline-block uppercase tracking-wider">{o.patente}</span>
                       </td>
-                      <td className="p-4 text-muted-foreground font-medium">{o.cliente}</td>
-                      <td className="p-4">
+                      <td className="px-2 py-3 text-muted-foreground font-medium">{o.cliente}</td>
+                      <td className="px-2 py-3">
                         {(roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE")) ? (
                           <div className="flex flex-col gap-1">
                             {(o.trabajos || []).map((t: any) => (
@@ -1036,7 +1036,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                           </div>
                         )}
                       </td>
-                      <td className="p-4">
+                      <td className="px-2 py-3">
                         <select
                           value={o.status}
                           onChange={(e) => handleUpdateStatus(o.id, e.target.value as any)}
@@ -1052,7 +1052,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                           <option value="ANULADO">ANULADO</option>
                         </select>
                       </td>
-                      <td className="p-4">
+                      <td className="px-2 py-3">
                         <div className="text-muted-foreground text-[10px]">
                           <p>Mano Obra: <span className="font-semibold text-foreground">${(o.costoManoObra ?? 0).toLocaleString("es-CL")}</span></p>
                           <p>Repuestos: <span className="font-semibold text-foreground">
@@ -1064,7 +1064,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                           <p className="font-bold text-primary mt-0.5">Total: ${(o.costoTotal ?? 0).toLocaleString("es-CL")}</p>
                         </div>
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="px-2 py-3 text-center">
                         <div className="flex flex-col items-center gap-1.5">
                           <Link 
                             href={`/seguimiento/${o.tokenSeguro}`}
@@ -1083,7 +1083,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                           </button>
                         </div>
                       </td>
-                      <td className="p-4 text-right">
+                      <td className="px-2 py-3 text-right">
                         {(roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE") || roles.includes("TALLER_RECEP") || permisos?.CAN_EDIT_OT || permisos?.CAN_DELETE_OT) && (
                           <div className="flex flex-col items-end gap-1.5">
                             {(roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE") || roles.includes("TALLER_RECEP") || permisos?.CAN_EDIT_OT) && (
