@@ -1318,7 +1318,7 @@ export async function deleteRecomendacion(id: string) {
 // NUEVAS ACCIONES: TRABAJOS (MÚLTIPLES MECÁNICOS)
 // =========================================================
 
-export async function createTrabajoOT(ordenTrabajoId: string, titulo: string, tecnicoId?: string, tareas?: string[]) {
+export async function createTrabajoOT(ordenTrabajoId: string, titulo: string, tecnicoId?: string, tareas?: string[], estimacionMinutos?: number) {
   try {
     const trabajo = await prisma.trabajoOT.create({
       data: {
@@ -1326,6 +1326,7 @@ export async function createTrabajoOT(ordenTrabajoId: string, titulo: string, te
         titulo,
         estado: "PENDIENTE",
         tecnicoId: tecnicoId || null,
+        estimacionMinutos: estimacionMinutos || 0,
         tareas: tareas && tareas.length > 0 ? {
           create: tareas.map(t => ({ tarea: t, ordenTrabajoId }))
         } : undefined

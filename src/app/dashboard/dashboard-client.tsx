@@ -169,7 +169,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const [newRoles, setNewRoles] = useState<string[]>([]);
   const [isSavingPermissions, setIsSavingPermissions] = useState(false);
   const [createTrabajoModal, setCreateTrabajoModal] = useState<{otId: string} | null>(null);
-  const [newTrabajoData, setNewTrabajoData] = useState({titulo: "", tareas: [] as string[]});
+  const [newTrabajoData, setNewTrabajoData] = useState({titulo: "", estimacionMinutos: 0, tareas: [] as string[]});
   
   const handleOpenPermissions = (worker: any) => {
     setEditingWorkerPermissions(worker);
@@ -525,7 +525,15 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           presupuestoMonto: Number(dbOt.presupuestoMonto || 0),
           presupuestoEstado: dbOt.presupuestoEstado,
           itemsPresupuesto: dbOt.itemsPresupuesto || [],
-          trabajos: dbOt.trabajos || [],
+          trabajos: (dbOt.trabajos || []).map((t: any) => ({
+            id: t.id,
+            titulo: t.titulo,
+            estimacionMinutos: t.estimacionMinutos,
+            estado: t.estado,
+            tecnicoId: t.tecnicoId,
+            tecnico: t.tecnico,
+            tareas: t.tareas
+          })),
           trabajosAdicionales: dbOt.trabajosAdicionales || [],
           bitacora: dbOt.bitacora || [],
           fotos: dbOt.fotos || [],
@@ -733,14 +741,14 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
     }
   };
 
-  const handleCreateTrabajo = async (otId: string, titulo: string, tareas: string[]) => {
+  const handleCreateTrabajo = async (otId: string, titulo: string, tareas: string[], estimacionMinutos?: number) => {
     if (!titulo.trim()) return;
     if (!isDemoMode) {
-      const res = await createTrabajoOT(otId, titulo, undefined, tareas);
+      const res = await createTrabajoOT(otId, titulo, undefined, tareas, estimacionMinutos);
       if (res.success) {
         triggerNotification(`Trabajo creado en la OT.`);
         setCreateTrabajoModal(null);
-        setNewTrabajoData({ titulo: "", tareas: [] });
+        setNewTrabajoData({ titulo: "", estimacionMinutos: 0, tareas: [] });
         fetchDbData();
       } else {
         triggerNotification(`Error: ${res.error}`);
@@ -748,7 +756,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
     } else {
       triggerNotification(`Trabajo creado (Demo).`);
       setCreateTrabajoModal(null);
-      setNewTrabajoData({ titulo: "", tareas: [] });
+      setNewTrabajoData({ titulo: "", estimacionMinutos: 0, tareas: [] });
     }
   };
 
@@ -836,17 +844,34 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   });
 
   const mechanicWorkloads = dbMecanicos.map(m => {
-    const activeOts = ots.filter(o => o.tecnicoId === m.id && o.status !== "ENTREGADO" && o.status !== "LISTO_ENTREGA" && o.status !== "ANULADO").length;
+    let activeTrabajos = 0;
+    let tiempoEstimadoTotal = 0; // en minutos
+
+    ots.forEach(o => {
+      if (o.status !== "ENTREGADO" && o.status !== "LISTO_ENTREGA" && o.status !== "ANULADO") {
+        const trabajosAsignados = (o.trabajos || []).filter((t: any) => t.tecnicoId === m.id && t.estado !== "FINALIZADO");
+        activeTrabajos += trabajosAsignados.length;
+        trabajosAsignados.forEach((t: any) => {
+          tiempoEstimadoTotal += (t.estimacionMinutos || 0);
+        });
+      }
+    });
+
     let statusLabel = "Disponible";
-    let statusColor = "text-success bg-success/15";
-    if (activeOts >= 3) {
+    let statusColor = "text-success bg-success/15 text-success-foreground border-success/30";
+    if (activeTrabajos >= 3 || tiempoEstimadoTotal >= 240) {
       statusLabel = "Sobrecargado";
-      statusColor = "text-red-500 bg-red-500/15";
-    } else if (activeOts > 0) {
+      statusColor = "text-red-600 bg-red-500/15 border-red-500/30";
+    } else if (activeTrabajos > 0) {
       statusLabel = "Ocupado";
-      statusColor = "text-warning bg-warning/15";
+      statusColor = "text-warning bg-warning/15 border-warning/30";
     }
-    return { ...m, activeOts, statusLabel, statusColor };
+
+    const estimacionString = tiempoEstimadoTotal > 0 
+      ? `Aprox. ${Math.floor(tiempoEstimadoTotal / 60)}h ${tiempoEstimadoTotal % 60}m`
+      : "";
+
+    return { ...m, activeOts: activeTrabajos, statusLabel, statusColor, estimacionString };
   });
 
   return (
@@ -1151,25 +1176,33 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
             </div>
             
             {/* PANEL LATERAL RECEPCIONISTA */}
-            {roles.includes("TALLER_RECEP") && (
+            {(roles.includes("TALLER_RECEP") || roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE") || permisos?.CAN_MANAGE_OT) && (
               <div className="lg:col-span-1 space-y-4">
-                <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden p-5">
-                  <h3 className="font-bold text-sm mb-4 border-b border-border pb-2 flex items-center gap-2">
-                    <User size={14} className="text-primary"/>
+                <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden p-4">
+                  <h3 className="font-bold text-sm mb-4 border-b border-border/50 pb-2 flex items-center gap-2">
+                    <User size={15} className="text-primary"/>
                     Disponibilidad Mecánicos
                   </h3>
                   <div className="space-y-3">
                     {mechanicWorkloads.map(m => (
-                      <div key={m.id} className="flex flex-col gap-1.5 p-3 border border-border rounded-lg bg-muted/10">
+                      <div key={m.id} className="flex flex-col gap-2 p-3 border border-border/60 rounded-xl bg-muted/5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]">
                         <div className="flex justify-between items-center">
-                          <span className="font-semibold text-xs">{m.nombre}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${m.statusColor}`}>
+                          <span className="font-bold text-xs truncate max-w-[120px]" title={m.nombre}>{m.nombre}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${m.statusColor}`}>
                             {m.statusLabel}
                           </span>
                         </div>
-                        <div className="text-[10px] text-muted-foreground flex justify-between">
-                          <span>OTs en curso (No entregadas):</span>
-                          <span className="font-bold text-foreground">{m.activeOts}</span>
+                        <div className="flex flex-col gap-1">
+                          <div className="text-[10px] text-muted-foreground flex justify-between items-center">
+                            <span>Trabajos en curso:</span>
+                            <span className="font-bold text-foreground text-[11px] bg-background border border-border/50 px-1.5 py-0.5 rounded-md">{m.activeOts}</span>
+                          </div>
+                          {m.estimacionString && (
+                            <div className="text-[10px] text-primary flex justify-between items-center mt-1">
+                              <span>Tiempo Ocupado:</span>
+                              <span className="font-extrabold">{m.estimacionString}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -2480,15 +2513,29 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
             </div>
             
             <div className="p-5 flex-1 overflow-y-auto space-y-4">
-              <div>
-                <label className="block text-xs font-semibold mb-1">Título del Trabajo</label>
-                <input
-                  type="text"
-                  value={newTrabajoData.titulo}
-                  onChange={(e) => setNewTrabajoData({...newTrabajoData, titulo: e.target.value})}
-                  className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:border-primary"
-                  placeholder="Ej: Cambio de Aceite, Frenos..."
-                />
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_120px] gap-4">
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Título del Trabajo</label>
+                  <input
+                    type="text"
+                    value={newTrabajoData.titulo}
+                    onChange={(e) => setNewTrabajoData({...newTrabajoData, titulo: e.target.value})}
+                    className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:border-primary"
+                    placeholder="Ej: Cambio de Aceite, Frenos..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Tiempo (Min.)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="15"
+                    value={newTrabajoData.estimacionMinutos || ""}
+                    onChange={(e) => setNewTrabajoData({...newTrabajoData, estimacionMinutos: parseInt(e.target.value) || 0})}
+                    className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:border-primary"
+                    placeholder="Ej: 60"
+                  />
+                </div>
               </div>
 
               <div>
@@ -2534,7 +2581,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 Cancelar
               </button>
               <button
-                onClick={() => handleCreateTrabajo(createTrabajoModal.otId, newTrabajoData.titulo, newTrabajoData.tareas.filter(t => t.trim() !== ""))}
+                onClick={() => handleCreateTrabajo(createTrabajoModal.otId, newTrabajoData.titulo, newTrabajoData.tareas.filter(t => t.trim() !== ""), newTrabajoData.estimacionMinutos)}
                 disabled={!newTrabajoData.titulo.trim()}
                 className="h-10 px-4 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >

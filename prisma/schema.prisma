@@ -249,6 +249,7 @@ model TrabajoOT {
   titulo        String // Ej: "Revisión de frenos"
   estado        String  @default("PENDIENTE") // PENDIENTE, EN_PROGRESO, FINALIZADO
   costoManoObra Decimal @default(0.0)
+  estimacionMinutos Int?    @default(0) // Tiempo estimado para completar el trabajo
 
   ordenTrabajoId String
   ordenTrabajo   OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Cascade)
