@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useSystemAuth } from "@/components/auth-wrapper";
 import { UserButton } from "@/components/auth-wrapper";
+import { KanbanView } from "./kanban-view";
 import Link from "next/link";
 import { 
   Car, 
@@ -86,7 +87,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const [formClient, setFormClient] = useState({ nombre: "", rut: "", telefono: "" });
   const [formVehiculo, setFormVehiculo] = useState({ patente: "", marca: "", modelo: "", año: "", kilometraje: "" });
   const [formOT, setFormOT] = useState({ combustible: "50", observaciones: "", reservaId: "" });
-  const [activeTab, setActiveTab] = useState<"ots" | "crear" | "trabajadores" | "bodega" | "marketplace" | "directorio" | "agenda">("ots");
+  const [activeTab, setActiveTab] = useState<"ots" | "crear" | "trabajadores" | "bodega" | "marketplace" | "directorio" | "agenda" | "kanban">("ots");
   const [notification, setNotification] = useState<string | null>(null);
 
   const brands = getAllBrands();
@@ -903,6 +904,14 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 Órdenes de Trabajo
               </button>
               <button 
+                onClick={() => setActiveTab("kanban")} 
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  activeTab === "kanban" ? "bg-primary text-white" : "hover:bg-muted text-muted-foreground"
+                }`}
+              >
+                Vista Operacional
+              </button>
+              <button 
                 onClick={() => setActiveTab("directorio")} 
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === "directorio" ? "bg-primary text-white" : "hover:bg-muted text-muted-foreground"
@@ -1229,6 +1238,10 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
               </div>
             )}
           </div>
+        )}
+
+        {activeTab === "kanban" && (
+          <KanbanView ots={ots} onSelectOT={setSelectedDetailOT} />
         )}
 
         {activeTab === "crear" && (
