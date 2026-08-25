@@ -1066,7 +1066,11 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                         {(roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE")) ? (
                           <div className="flex flex-col gap-1">
                             {(o.trabajos || []).map((t: any) => (
-                              <div key={t.id} className="flex gap-1 items-center bg-muted/20 p-1 rounded">
+                              <div key={t.id} className="flex gap-1 items-center bg-muted/20 p-1 rounded group relative">
+                                <div className={`w-2 h-2 rounded-full shrink-0 ${
+                                  t.estado === "FINALIZADO" ? "bg-success" : 
+                                  t.estado === "EN_PROGRESO" ? "bg-warning" : "bg-muted-foreground/50"
+                                }`} title={t.estado} />
                                 <span className="text-[10px] truncate max-w-[80px]" title={t.titulo}>{t.titulo}</span>
                                 <select
                                   value={t.tecnicoId || "Sin Asignar"}
@@ -1080,6 +1084,11 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                                     ))
                                   ) : null}
                                 </select>
+                                {t.estado === "FINALIZADO" && (
+                                  <span className="absolute -top-6 left-1/2 -translate-x-1/2 bg-black text-white text-[9px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                                    Finalizado
+                                  </span>
+                                )}
                               </div>
                             ))}
                             <button
@@ -1092,7 +1101,13 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                         ) : (
                           <div className="flex flex-col gap-1">
                             {(o.trabajos || []).map((t: any) => (
-                              <span key={t.id} className="text-[10px] text-muted-foreground font-medium">{t.titulo}: {t.tecnico?.nombre || "Sin Asignar"}</span>
+                              <div key={t.id} className="flex gap-1 items-center">
+                                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                  t.estado === "FINALIZADO" ? "bg-success" : 
+                                  t.estado === "EN_PROGRESO" ? "bg-warning" : "bg-muted-foreground/50"
+                                }`} title={t.estado} />
+                                <span className="text-[10px] text-muted-foreground font-medium">{t.titulo}: {t.tecnico?.nombre || "Sin Asignar"}</span>
+                              </div>
                             ))}
                           </div>
                         )}
