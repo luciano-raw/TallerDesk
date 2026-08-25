@@ -1364,6 +1364,36 @@ export async function updateTrabajoEstado(trabajoId: string, estado: "PENDIENTE"
       where: { id: trabajoId },
       data: { estado }
     });
+
+    // --- LÓGICA DE AUTOMATIZACIÓN DE ESTADOS ---
+    if (estado === "FINALIZADO") {
+      // Verificar todos los trabajos de esta OT
+      const ot = await prisma.ordenTrabajo.findUnique({
+        where: { id: trabajo.ordenTrabajoId },
+        include: { trabajos: true }
+      });
+
+      if (ot) {
+        const todosFinalizados = ot.trabajos.every(t => t.estado === "FINALIZADO");
+        
+        // Si todos están finalizados y la OT aún está en progreso, la pasamos a CONTROL_CALIDAD
+        if (todosFinalizados && ot.status === "EN_PROGRESO") {
+          await prisma.ordenTrabajo.update({
+            where: { id: ot.id },
+            data: { status: "CONTROL_CALIDAD" }
+          });
+
+          // Registrar en la bitácora
+          await prisma.bitacoraAccion.create({
+            data: {
+              ordenTrabajoId: ot.id,
+              accion: "Estado automático: CONTROL CALIDAD. Todos los trabajos finalizados."
+            }
+          });
+        }
+      }
+    }
+
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/tecnico");
     revalidatePath("/seguimiento/[token]");
@@ -1406,14 +1436,31 @@ export async function updateTrabajoAdicionalEstado(id: string, estado: "APROBADO
     });
     
     // Si se aprueba, sumarlo al costoTotal de la OT
+    // Si se aprueba, sumarlo al costoTotal de la OT y crear el TrabajoOT para los mecánicos
     if (estado === "APROBADO") {
+      const otActual = await prisma.ordenTrabajo.findUnique({ where: { id: adicional.ordenTrabajoId }});
+      
       await prisma.ordenTrabajo.update({
         where: { id: adicional.ordenTrabajoId },
         data: {
-          costoTotal: { increment: adicional.monto }
+          costoTotal: { increment: adicional.monto },
+          // Si estaba en presupuesto o diagnostico, lo pasamos a EN_PROGRESO automáticamente
+          ...(otActual && (otActual.status === "PRESUPUESTADO" || otActual.status === "DIAGNOSTICO" || otActual.status === "INGRESADO") 
+              ? { status: "EN_PROGRESO" } : {})
         }
       });
-      await logOTAction(adicional.ordenTrabajoId, `Trabajo Adicional Aprobado por el cliente: ${adicional.titulo} ($${adicional.monto})`);
+      
+      // Crear el TrabajoOT para que los mecánicos lo vean en su panel
+      await prisma.trabajoOT.create({
+        data: {
+          titulo: adicional.titulo,
+          ordenTrabajoId: adicional.ordenTrabajoId,
+          estado: "PENDIENTE",
+          costoManoObra: adicional.monto
+        }
+      });
+
+      await logOTAction(adicional.ordenTrabajoId, `Trabajo Adicional Aprobado por el cliente: ${adicional.titulo} ($${adicional.monto}) - Se agregó a la cola de trabajos.`);
     } else {
       await logOTAction(adicional.ordenTrabajoId, `Trabajo Adicional Rechazado: ${adicional.titulo}`);
       
