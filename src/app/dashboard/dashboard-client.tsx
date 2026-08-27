@@ -846,21 +846,26 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
 
   const mechanicWorkloads = dbMecanicos.map(m => {
     let activeTrabajos = 0;
-    let tiempoEstimadoTotal = 0; // en minutos
+    let tiempoRestanteTotal = 0; // en minutos
 
     ots.forEach(o => {
       if (o.status !== "ENTREGADO" && o.status !== "LISTO_ENTREGA" && o.status !== "ANULADO") {
         const trabajosAsignados = (o.trabajos || []).filter((t: any) => t.tecnicoId === m.id && t.estado !== "FINALIZADO");
         activeTrabajos += trabajosAsignados.length;
         trabajosAsignados.forEach((t: any) => {
-          tiempoEstimadoTotal += (t.estimacionMinutos || 0);
+          let minsRestantes = t.estimacionMinutos || 0;
+          if (t.estado === "EN_PROGRESO" && t.startedAt) {
+             const elapsedMins = Math.floor((Date.now() - new Date(t.startedAt).getTime()) / 60000);
+             minsRestantes = Math.max(0, minsRestantes - elapsedMins);
+          }
+          tiempoRestanteTotal += minsRestantes;
         });
       }
     });
 
     let statusLabel = "Disponible";
     let statusColor = "text-success bg-success/15 text-success-foreground border-success/30";
-    if (activeTrabajos >= 3 || tiempoEstimadoTotal >= 240) {
+    if (activeTrabajos >= 3 || tiempoRestanteTotal >= 240) {
       statusLabel = "Sobrecargado";
       statusColor = "text-red-600 bg-red-500/15 border-red-500/30";
     } else if (activeTrabajos > 0) {
@@ -868,11 +873,14 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
       statusColor = "text-warning bg-warning/15 border-warning/30";
     }
 
-    const estimacionString = tiempoEstimadoTotal > 0 
-      ? `Aprox. ${Math.floor(tiempoEstimadoTotal / 60)}h ${tiempoEstimadoTotal % 60}m`
+    const estimacionString = tiempoRestanteTotal > 0 
+      ? `Aprox. ${Math.floor(tiempoRestanteTotal / 60)}h ${tiempoRestanteTotal % 60}m`
       : "";
 
-    return { ...m, activeOts: activeTrabajos, statusLabel, statusColor, estimacionString };
+    const freeTimeDate = new Date(Date.now() + tiempoRestanteTotal * 60000);
+    const freeTimeString = tiempoRestanteTotal > 0 ? freeTimeDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "";
+
+    return { ...m, activeOts: activeTrabajos, statusLabel, statusColor, estimacionString, freeTimeString };
   });
 
   return (
@@ -1222,10 +1230,16 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                             <span className="font-bold text-foreground text-[11px] bg-background border border-border/50 px-1.5 py-0.5 rounded-md">{m.activeOts}</span>
                           </div>
                           {m.estimacionString && (
-                            <div className="text-[10px] text-primary flex justify-between items-center mt-1">
-                              <span>Tiempo Ocupado:</span>
-                              <span className="font-extrabold">{m.estimacionString}</span>
-                            </div>
+                            <>
+                              <div className="text-[10px] text-primary flex justify-between items-center mt-1">
+                                <span>Tiempo Restante:</span>
+                                <span className="font-extrabold">{m.estimacionString}</span>
+                              </div>
+                              <div className="text-[10px] text-muted-foreground flex justify-between items-center mt-0.5">
+                                <span>Se desocupa a las:</span>
+                                <span className="font-bold text-foreground">{m.freeTimeString}</span>
+                              </div>
+                            </>
                           )}
                         </div>
                       </div>

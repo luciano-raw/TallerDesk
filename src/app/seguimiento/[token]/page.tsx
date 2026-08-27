@@ -359,6 +359,25 @@ export default function ClienteSeguimientoPage() {
                         </span>
                       </div>
                       
+                      {t.estado === "EN_PROGRESO" && t.tecnico && t.startedAt && (
+                        <div className="bg-primary/5 text-primary p-2 rounded flex flex-col gap-1 text-[10px] border border-primary/20">
+                          <span className="font-bold flex items-center gap-1">
+                            <Wrench className="w-3 h-3" />
+                            Siendo atendido por {t.tecnico.nombre}
+                          </span>
+                          {(() => {
+                            const elapsedMins = Math.floor((Date.now() - new Date(t.startedAt).getTime()) / 60000);
+                            const minsRestantes = Math.max(0, (t.estimacionMinutos || 0) - elapsedMins);
+                            if (minsRestantes > 0) {
+                              const freeTimeDate = new Date(Date.now() + minsRestantes * 60000);
+                              const timeStr = freeTimeDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                              return <span className="opacity-80">Finaliza aprox. a las {timeStr}</span>;
+                            }
+                            return <span className="opacity-80">Finalizando pronto...</span>;
+                          })()}
+                        </div>
+                      )}
+                      
                       {totalTareas > 0 && (
                         <div className="space-y-1 mt-1 border-t border-border/40 pt-2">
                           <div className="flex justify-between text-[10px] text-muted-foreground font-semibold">

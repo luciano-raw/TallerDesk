@@ -1360,9 +1360,20 @@ export async function assignTrabajoMecanico(trabajoId: string, tecnicoId: string
 
 export async function updateTrabajoEstado(trabajoId: string, estado: "PENDIENTE" | "EN_PROGRESO" | "FINALIZADO") {
   try {
+    const dataToUpdate: any = { estado };
+    if (estado === "EN_PROGRESO") {
+      dataToUpdate.startedAt = new Date();
+      dataToUpdate.finishedAt = null;
+    } else if (estado === "FINALIZADO") {
+      dataToUpdate.finishedAt = new Date();
+    } else if (estado === "PENDIENTE") {
+      dataToUpdate.startedAt = null;
+      dataToUpdate.finishedAt = null;
+    }
+
     const trabajo = await prisma.trabajoOT.update({
       where: { id: trabajoId },
-      data: { estado }
+      data: dataToUpdate
     });
 
     // --- LÓGICA DE AUTOMATIZACIÓN DE ESTADOS ---
