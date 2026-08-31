@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useEffect } from "react";
 import { useSystemAuth } from "@/components/auth-wrapper";
 import { UserButton } from "@/components/auth-wrapper";
