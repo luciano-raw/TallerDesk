@@ -21,6 +21,7 @@ import {
   Copy,
   CheckCircle2,
   Clock,
+  Printer,
   X
 } from "lucide-react";
 import { 
@@ -129,6 +130,9 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
 
 
   const [selectedDetailOT, setSelectedDetailOT] = useState<any>(null);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [printFormat, setPrintFormat] = useState("ticket");
+  const [printDocType, setPrintDocType] = useState("boleta");
   const [newCostItemType, setNewCostItemType] = useState<"MANO_OBRA" | "REPUESTO" | "REPUESTO_BODEGA">("MANO_OBRA");
   const [newCostBodegaId, setNewCostBodegaId] = useState("");
   const [newCostCantidad, setNewCostCantidad] = useState("1");
@@ -2317,12 +2321,21 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                   Orden: <span className="font-extrabold text-primary">{selectedDetailOT.codigo}</span> | Vehículo: <span className="font-semibold">{selectedDetailOT.vehiculo}</span> | Patente: <span className="bg-muted px-1 py-0.2 rounded font-mono font-bold uppercase tracking-wider text-[10px]">{selectedDetailOT.patente}</span>
                 </p>
               </div>
-              <button 
-                onClick={() => setSelectedDetailOT(null)}
-                className="text-muted-foreground hover:text-foreground text-sm font-bold bg-muted hover:bg-muted/80 px-2.5 py-1 rounded-lg cursor-pointer transition-all"
-              >
-                Cerrar Detalle
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setShowPrintModal(true)}
+                  className="flex items-center gap-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 border border-blue-600/20 text-sm font-bold px-3 py-1 rounded-lg transition-all"
+                >
+                  <Printer size={16} />
+                  Comprobante
+                </button>
+                <button 
+                  onClick={() => setSelectedDetailOT(null)}
+                  className="text-muted-foreground hover:text-foreground text-sm font-bold bg-muted hover:bg-muted/80 px-2.5 py-1 rounded-lg cursor-pointer transition-all"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
 
             {/* Split Grid */}
@@ -2438,6 +2451,105 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
 
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PRINT COMPROBANTE */}
+      {showPrintModal && selectedDetailOT && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in text-foreground">
+          <div className="bg-background border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-scale-in">
+            <div className="p-5 border-b border-border flex justify-between items-center bg-card">
+              <h3 className="font-bold flex items-center gap-2 text-lg">
+                <Printer className="text-primary" size={20} />
+                Emitir Comprobante
+              </h3>
+              <button 
+                onClick={() => setShowPrintModal(false)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {/* Tipo de Documento */}
+              <div className="space-y-3">
+                <label className="text-sm font-bold text-foreground">Tipo de Documento</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setPrintDocType("boleta")}
+                    className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${
+                      printDocType === "boleta" 
+                        ? "border-primary bg-primary/10 text-primary" 
+                        : "border-border hover:border-primary/50 text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <span className="font-bold text-sm">Boleta Interna</span>
+                    <span className="text-xs text-center leading-tight opacity-80">Comprobante simple para el cliente</span>
+                  </button>
+                  <button
+                    onClick={() => setPrintDocType("factura")}
+                    className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${
+                      printDocType === "factura" 
+                        ? "border-primary bg-primary/10 text-primary" 
+                        : "border-border hover:border-primary/50 text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <span className="font-bold text-sm">Factura Proforma</span>
+                    <span className="text-xs text-center leading-tight opacity-80">Incluye datos de empresa (RUT/Giro)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Formato de Impresión */}
+              <div className="space-y-3">
+                <label className="text-sm font-bold text-foreground">Formato de Impresión</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setPrintFormat("ticket")}
+                    className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
+                      printFormat === "ticket" 
+                        ? "border-primary bg-primary/10 text-primary" 
+                        : "border-border hover:border-primary/50 text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <span className="font-bold text-sm">Ticket (80mm)</span>
+                    <span className="text-[10px] uppercase tracking-wider">Impresora Térmica</span>
+                  </button>
+                  <button
+                    onClick={() => setPrintFormat("a4")}
+                    className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
+                      printFormat === "a4" 
+                        ? "border-primary bg-primary/10 text-primary" 
+                        : "border-border hover:border-primary/50 text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <span className="font-bold text-sm">Documento A4</span>
+                    <span className="text-[10px] uppercase tracking-wider">Impresora Normal / PDF</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-border bg-card flex justify-end gap-3">
+              <button
+                onClick={() => setShowPrintModal(false)}
+                className="px-4 py-2 rounded-lg text-sm font-bold text-muted-foreground hover:bg-muted transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  window.open(`/print/comprobante/${selectedDetailOT.id}?format=${printFormat}&docType=${printDocType}`, "_blank");
+                  setShowPrintModal(false);
+                }}
+                className="px-5 py-2 rounded-lg text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2 transition-all shadow-lg hover:shadow-xl"
+              >
+                <Printer size={16} />
+                Generar e Imprimir
+              </button>
+            </div>
           </div>
         </div>
       )}

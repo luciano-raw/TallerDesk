@@ -1659,3 +1659,6 @@ export async function updateLimiteReservas(tallerId: string, limite: number, hor
     return { error: error.message };
   }
 }
+
+
+export async function getOTForPrint(id: string) { return await prisma.ordenTrabajo.findUnique({ where: { id }, include: { vehiculo: { include: { cliente: true } }, taller: true, itemsPresupuesto: { include: { inventarioItem: true } }, trabajosAdicionales: true } }); }
