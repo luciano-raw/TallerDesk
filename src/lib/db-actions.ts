@@ -298,6 +298,8 @@ export async function updateOTStatus(id: string, status: "INGRESADO" | "DIAGNOST
     
     const wasFinalState = otPrev.status === "ENTREGADO" || otPrev.status === "LISTO_ENTREGA";
     const isFinalState = status === "ENTREGADO" || status === "LISTO_ENTREGA";
+    const wasAnulado = otPrev.status === "ANULADO";
+    const isAnulado = status === "ANULADO";
 
     const ot = await prisma.ordenTrabajo.update({
       where: { id },
@@ -333,8 +335,8 @@ export async function updateOTStatus(id: string, status: "INGRESADO" | "DIAGNOST
         }
       }
     }
-    // Revertir consumo al salir de un estado final a un estado NO final
-    else if (wasFinalState && !isFinalState) {
+    // Revertir consumo al salir de un estado final a un estado NO final (y no anulado)
+    else if (wasFinalState && !isFinalState && !isAnulado) {
       for (const item of ot.itemsPresupuesto) {
         if (item.tipo === "REPUESTO" && item.inventarioItemId && item.inventarioItem) {
           const match = item.descripcion.match(/^(\d+)x /);
@@ -357,6 +359,57 @@ export async function updateOTStatus(id: string, status: "INGRESADO" | "DIAGNOST
               inventarioItemId: item.inventarioItemId
             }
           });
+        }
+      }
+    }
+    
+    // Manejo de ANULADO
+    if (!wasAnulado && isAnulado) {
+      for (const item of ot.itemsPresupuesto) {
+        if (item.tipo === "REPUESTO" && item.inventarioItemId && item.inventarioItem) {
+          const match = item.descripcion.match(/^(\d+)x /);
+          const cantidad = match ? parseInt(match[1], 10) : 1;
+          
+          if (wasFinalState) {
+            // Si estaba finalizado y se anula, se repone el stock físico pero NO se reserva
+            await prisma.inventarioItem.update({
+              where: { id: item.inventarioItemId },
+              data: { cantidad: { increment: cantidad } }
+            });
+            await prisma.movimientoInventario.create({
+              data: { tipo: "INGRESO", cantidad, costoUnitario: item.inventarioItem.precioUnitario, referencia: ot.codigo + " (ANULADO)", inventarioItemId: item.inventarioItemId }
+            });
+          } else {
+            // Si estaba en progreso y se anula, solo se quita la reserva
+            await prisma.inventarioItem.update({
+              where: { id: item.inventarioItemId },
+              data: { stockReservado: { decrement: cantidad } }
+            });
+          }
+        }
+      }
+    } else if (wasAnulado && !isAnulado) {
+      for (const item of ot.itemsPresupuesto) {
+        if (item.tipo === "REPUESTO" && item.inventarioItemId && item.inventarioItem) {
+          const match = item.descripcion.match(/^(\d+)x /);
+          const cantidad = match ? parseInt(match[1], 10) : 1;
+          
+          if (isFinalState) {
+            // De anulado directo a finalizado, descuenta stock físico (raro pero posible)
+            await prisma.inventarioItem.update({
+              where: { id: item.inventarioItemId },
+              data: { cantidad: { decrement: cantidad } }
+            });
+            await prisma.movimientoInventario.create({
+              data: { tipo: "CONSUMO", cantidad, costoUnitario: item.inventarioItem.precioUnitario, referencia: ot.codigo + " (RECUPERADO)", inventarioItemId: item.inventarioItemId }
+            });
+          } else {
+            // Vuelve a estar reservado
+            await prisma.inventarioItem.update({
+              where: { id: item.inventarioItemId },
+              data: { stockReservado: { increment: cantidad } }
+            });
+          }
         }
       }
     }
