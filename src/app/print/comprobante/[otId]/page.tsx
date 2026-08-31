@@ -64,6 +64,8 @@ export default function PrintComprobante() {
           <p><strong>Cliente:</strong> {ot.vehiculo?.cliente?.nombre}</p>
           <p><strong>Vehículo:</strong> {ot.vehiculo?.marca} {ot.vehiculo?.modelo}</p>
           <p><strong>Patente:</strong> {ot.vehiculo?.patente}</p>
+          {ot.kilometraje && <p><strong>Kilometraje:</strong> {ot.kilometraje.toLocaleString("es-CL")} km</p>}
+          {ot.tecnico && <p><strong>Técnico:</strong> {ot.tecnico.nombre}</p>}
           <p><strong>Fecha:</strong> {new Date().toLocaleDateString("es-CL")}</p>
         </div>
 
@@ -154,6 +156,8 @@ export default function PrintComprobante() {
           <p><strong>Vehículo:</strong> {ot.vehiculo?.marca} {ot.vehiculo?.modelo}</p>
           <p><strong>Patente:</strong> {ot.vehiculo?.patente}</p>
           <p><strong>VIN:</strong> {ot.vehiculo?.vin || "N/A"}</p>
+          {ot.kilometraje && <p><strong>Kilometraje:</strong> {ot.kilometraje.toLocaleString("es-CL")} km</p>}
+          {ot.tecnico && <p><strong>Técnico Responsable:</strong> {ot.tecnico.nombre}</p>}
         </div>
       </div>
 
