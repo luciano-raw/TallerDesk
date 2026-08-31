@@ -647,6 +647,11 @@ export async function getTecnicoOTs(tecnicoId: string) {
         fotos: {
           orderBy: { createdAt: "desc" }
         },
+        itemsPresupuesto: {
+          include: {
+            inventarioItem: true
+          }
+        },
         trabajos: { include: { tecnico: true, tareas: { orderBy: { tarea: "asc" } } } },
         trabajosAdicionales: { orderBy: { createdAt: "desc" } }
       },
