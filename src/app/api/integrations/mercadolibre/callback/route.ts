@@ -30,7 +30,8 @@ export async function GET(request: Request) {
         client_id: clientId,
         client_secret: clientSecret,
         code: code,
-        redirect_uri: redirectUri
+        redirect_uri: redirectUri,
+        code_verifier: "tallerdesk_mercadolibre_pkce_verifier_string_123"
       })
     });
 
