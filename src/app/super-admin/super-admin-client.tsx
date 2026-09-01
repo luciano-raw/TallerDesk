@@ -13,6 +13,7 @@ import {
   Power,
   Sparkles,
   Users,
+  UserCheck,
   ShieldCheck
 } from "lucide-react";
 import { 
@@ -340,6 +341,13 @@ export default function SuperAdminClient() {
             <Users size={13} />
             Permisos Usuarios ({usuarios.length})
           </button>
+          <a
+            href="/super-admin/proveedores"
+            className="flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-semibold text-muted-foreground hover:text-foreground transition-all hover:bg-muted"
+          >
+            <UserCheck size={13} />
+            Proveedores B2B
+          </a>
         </div>
 
         <button

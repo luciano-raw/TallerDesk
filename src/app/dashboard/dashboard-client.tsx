@@ -1777,19 +1777,32 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                     <div className="space-y-3">
                       <div className="flex justify-between items-start gap-2">
                         <span className={`text-[8px] font-extrabold px-1.5 py-0.2 rounded uppercase tracking-wider ${
+                          item.isLocal ? "bg-emerald-600/20 text-emerald-500 border border-emerald-500/30" : 
                           item.tienda === "Mercado Libre Chile" ? "bg-amber-600/10 text-amber-500" : "bg-blue-600/10 text-blue-500"
                         }`}>
-                          {item.tienda}
+                          {item.isLocal ? "⭐ Proveedor Local: " + item.tienda : item.tienda}
                         </span>
-                        <a
-                          href={item.link}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-[10px] text-muted-foreground hover:text-primary hover:underline flex items-center gap-0.5"
-                        >
-                          Ver original
-                          <ExternalLink size={10} />
-                        </a>
+                        {item.link ? (
+                          <a
+                            href={item.link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[10px] text-muted-foreground hover:text-primary hover:underline flex items-center gap-0.5"
+                          >
+                            Ver original
+                            <ExternalLink size={10} />
+                          </a>
+                        ) : item.isLocal && item.proveedorTelefono ? (
+                          <a
+                            href={`https://wa.me/${item.proveedorTelefono.replace(/[^0-9]/g, '')}?text=Hola! Vengo desde TallerDesk. Necesito cotizar o pedir el repuesto: ${item.nombre}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[10px] text-emerald-500 hover:text-emerald-400 hover:underline flex items-center gap-0.5 font-bold"
+                          >
+                            Pedir (WhatsApp)
+                            <ExternalLink size={10} />
+                          </a>
+                        ) : null}
                       </div>
                       {item.imagen && (
                         <div className="w-full h-32 bg-muted/20 flex items-center justify-center rounded-lg overflow-hidden border border-border/55">

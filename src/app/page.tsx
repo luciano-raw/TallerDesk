@@ -125,7 +125,7 @@ export default function Home() {
             <p className="text-muted-foreground max-w-2xl mx-auto">Una solución multi-tenant diseñada para mecánicas, detailing, reprogramaciones y tiendas de repuestos.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {/* Feature 1 */}
             <div className="bg-card border border-border p-6 rounded-2xl hover:border-primary/50 transition-all group hover:scale-[1.01]">
               <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-5 group-hover:bg-primary group-hover:text-white transition-colors">
@@ -157,6 +157,20 @@ export default function Home() {
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Control de piezas, alertas de stock mínimo, compatibilidades con marcas y vinculación de repuestos directo a las órdenes de trabajo.
               </p>
+            </div>
+
+            {/* Feature 4 (Proveedores) */}
+            <div className="bg-gradient-to-br from-primary/10 to-transparent border border-primary/30 p-6 rounded-2xl hover:border-primary/50 transition-all group hover:scale-[1.01]">
+              <div className="w-12 h-12 rounded-xl bg-primary text-white flex items-center justify-center mb-5 glow-green-sm">
+                <UserCheck size={20} />
+              </div>
+              <h3 className="text-lg font-bold mb-2">Red de Proveedores Locales</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                ¿Vendes repuestos? Sube tu catálogo y conecta directamente con decenas de talleres automotrices que buscan tus productos cada día.
+              </p>
+              <a href="#contact" className="text-xs font-bold text-primary flex items-center gap-1 hover:underline">
+                Convertirme en Proveedor <ArrowRight size={12} />
+              </a>
             </div>
           </div>
         </div>

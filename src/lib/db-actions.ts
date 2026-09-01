@@ -1178,33 +1178,65 @@ export async function searchMarketplaceParts(query: string) {
   try {
     if (!query || query.trim() === "") return [];
     
-    const token = process.env.MERCADOLIBRE_ACCESS_TOKEN;
-    const headers: any = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      "Accept": "application/json"
-    };
+    // 1. Buscar en la red local de proveedores (Fase 2)
+    const localItems = await prisma.marketplaceItem.findMany({
+      where: {
+        nombre: {
+          contains: query,
+          mode: "insensitive"
+        }
+      },
+      include: {
+        proveedor: true
+      },
+      take: 10
+    });
 
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-    
-    // Consultar API de Mercado Libre Chile (MLC)
-    const res = await fetch(`https://api.mercadolibre.com/sites/MLC/search?q=${encodeURIComponent(query)}&limit=20`, { headers });
-    
-    if (!res.ok) {
-      console.warn(`Mercado Libre API retornó estado ${res.status}.`);
-      throw new Error(`API error ${res.status}`);
-    }
-    
-    const data = await res.json();
-    return (data.results || []).map((item: any) => ({
+    const localResults = localItems.map(item => ({
       id: item.id,
-      nombre: item.title,
-      precio: Number(item.price || 0),
-      imagen: item.thumbnail ? item.thumbnail.replace("http://", "https://") : null,
-      link: item.permalink,
-      tienda: "Mercado Libre Chile"
+      nombre: item.nombre,
+      precio: Number(item.precio),
+      imagen: null,
+      link: null,
+      tienda: item.proveedor.nombre,
+      isLocal: true, // Flag para la UI
+      proveedorTelefono: item.proveedor.telefono
     }));
+
+    // 2. Búsqueda Externa (Fase 1 - Agnóstico, por ahora simulado usando ML o mock)
+    let externalResults: any[] = [];
+    
+    try {
+      const token = process.env.MERCADOLIBRE_ACCESS_TOKEN;
+      const headers: any = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "application/json"
+      };
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      
+      const res = await fetch(`https://api.mercadolibre.com/sites/MLC/search?q=${encodeURIComponent(query)}&limit=10`, { headers });
+      
+      if (res.ok) {
+        const data = await res.json();
+        externalResults = (data.results || []).map((item: any) => ({
+          id: item.id,
+          nombre: item.title,
+          precio: Number(item.price || 0),
+          imagen: item.thumbnail ? item.thumbnail.replace("http://", "https://") : null,
+          link: item.permalink,
+          tienda: "Mercado Libre Chile",
+          isLocal: false
+        }));
+      }
+    } catch (e) {
+      console.warn("Error en búsqueda externa, devolviendo solo local:", e);
+    }
+
+    // Retornar locales primero, luego externos
+    return [...localResults, ...externalResults];
   } catch (error: any) {
     console.error("Error al buscar repuestos en el marketplace:", error);
     throw new Error(error.message || "Error al buscar repuestos en el marketplace.");

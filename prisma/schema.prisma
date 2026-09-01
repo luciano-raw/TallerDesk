@@ -39,15 +39,15 @@ model Taller {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  usuarios   Usuario[]
-  clientes   Cliente[]
-  vehiculos  Vehiculo[]
-  ots        OrdenTrabajo[]
-  inventario InventarioItem[]
-  reservas   Reserva[]
-  limiteReservasDiarias Int @default(10) // Límite de vehículos que se pueden agendar en un solo día
-  horaApertura String @default("08:00")
-  horaCierre   String @default("19:00")
+  usuarios              Usuario[]
+  clientes              Cliente[]
+  vehiculos             Vehiculo[]
+  ots                   OrdenTrabajo[]
+  inventario            InventarioItem[]
+  reservas              Reserva[]
+  limiteReservasDiarias Int              @default(10) // Límite de vehículos que se pueden agendar en un solo día
+  horaApertura          String           @default("08:00")
+  horaCierre            String           @default("19:00")
 }
 
 // Usuarios vinculados a Clerk y un taller respectivo (excepto Super Admins)
@@ -132,7 +132,7 @@ model OrdenTrabajo {
   tallerId String
   taller   Taller @relation(fields: [tallerId], references: [id])
 
-  reserva  Reserva?
+  reserva Reserva?
 
   fotos              FotoOT[]
   checklist          TareaChecklist[]
@@ -245,10 +245,10 @@ model MovimientoInventario {
 
 // Trabajo específico dentro de una OT asignado a un mecánico
 model TrabajoOT {
-  id            String  @id @default(uuid())
-  titulo        String // Ej: "Revisión de frenos"
-  estado        String  @default("PENDIENTE") // PENDIENTE, EN_PROGRESO, FINALIZADO
-  costoManoObra Decimal @default(0.0)
+  id                String  @id @default(uuid())
+  titulo            String // Ej: "Revisión de frenos"
+  estado            String  @default("PENDIENTE") // PENDIENTE, EN_PROGRESO, FINALIZADO
+  costoManoObra     Decimal @default(0.0)
   estimacionMinutos Int?    @default(0) // Tiempo estimado para completar el trabajo
 
   ordenTrabajoId String
@@ -260,9 +260,9 @@ model TrabajoOT {
   tareas TareaChecklist[]
   fotos  FotoOT[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  startedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  startedAt  DateTime?
   finishedAt DateTime?
 }
 
@@ -327,18 +327,52 @@ model Reserva {
   patente         String
   marca           String
   modelo          String
-  fechaHora       DateTime      // Fecha y hora específica de la cita
+  fechaHora       DateTime // Fecha y hora específica de la cita
   tipoServicio    String
   estado          EstadoReserva @default(AGENDADA)
   observaciones   String?
 
-  tallerId        String
-  taller          Taller        @relation(fields: [tallerId], references: [id], onDelete: Cascade)
+  tallerId String
+  taller   Taller @relation(fields: [tallerId], references: [id], onDelete: Cascade)
 
   // En caso de que se convierta a una OT, podemos enlazarla
-  ordenTrabajoId  String?       @unique
-  ordenTrabajo    OrdenTrabajo? @relation(fields: [ordenTrabajoId], references: [id], onDelete: SetNull)
+  ordenTrabajoId String?       @unique
+  ordenTrabajo   OrdenTrabajo? @relation(fields: [ordenTrabajoId], references: [id], onDelete: SetNull)
 
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// -------------------------------------------------------------
+// B2B MARKETPLACE & PROVEEDORES LOCALES
+// -------------------------------------------------------------
+
+model Proveedor {
+  id        String   @id @default(uuid())
+  nombre    String
+  telefono  String
+  email     String?
+  ciudad    String
+  direccion String?
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items MarketplaceItem[]
+}
+
+model MarketplaceItem {
+  id        String  @id @default(uuid())
+  sku       String?
+  nombre    String
+  marca     String?
+  precio    Decimal
+  stock     Int?    @default(0)
+  categoria String?
+
+  proveedorId String
+  proveedor   Proveedor @relation(fields: [proveedorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
