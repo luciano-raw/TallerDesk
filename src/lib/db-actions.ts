@@ -1207,7 +1207,13 @@ export async function searchMarketplaceParts(query: string) {
     let externalResults: any[] = [];
     
     try {
-      const token = process.env.MERCADOLIBRE_ACCESS_TOKEN;
+      let token = process.env.MERCADOLIBRE_ACCESS_TOKEN; // Fallback
+      
+      // Intentar obtener token de la DB
+      const dbToken = await prisma.sistemaConfig.findUnique({ where: { key: "MELI_ACCESS_TOKEN" } });
+      if (dbToken && dbToken.value) {
+        token = dbToken.value;
+      }
       const headers: any = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         "Accept": "application/json"

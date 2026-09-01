@@ -376,3 +376,14 @@ model MarketplaceItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// -------------------------------------------------------------
+// SISTEMA CONFIG GLOBAL
+// -------------------------------------------------------------
+
+model SistemaConfig {
+  id    String @id @default(uuid())
+  key   String @unique
+  value String
+  updatedAt DateTime @updatedAt
+}
