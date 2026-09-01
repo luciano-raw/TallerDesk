@@ -1174,6 +1174,60 @@ export async function adjustInventarioStock(id: string, cantidadCambio: number) 
 
 // --- ACCIONES DE MARKETPLACE DE REPUESTOS ---
 
+// Función auxiliar para obtener un token válido de ML (refresca automáticamente si expiró)
+async function getValidMercadoLibreToken(): Promise<string | null> {
+  const dbToken = await prisma.sistemaConfig.findUnique({ where: { key: "MELI_ACCESS_TOKEN" } });
+  const dbRefresh = await prisma.sistemaConfig.findUnique({ where: { key: "MELI_REFRESH_TOKEN" } });
+  const dbExpires = await prisma.sistemaConfig.findUnique({ where: { key: "MELI_EXPIRES_AT" } });
+
+  let token = dbToken?.value || process.env.MERCADOLIBRE_ACCESS_TOKEN || null;
+
+  if (dbExpires && dbRefresh && dbRefresh.value) {
+    const expiresAt = new Date(dbExpires.value).getTime();
+    const now = Date.now();
+    
+    // Si quedan menos de 5 minutos para que expire, o ya expiró, lo refrescamos
+    if (expiresAt - now < 5 * 60 * 1000) {
+      console.log("Token de MercadoLibre expirado o por expirar, refrescando...");
+      try {
+        const res = await fetch("https://api.mercadolibre.com/oauth/token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/json"
+          },
+          body: new URLSearchParams({
+            grant_type: "refresh_token",
+            client_id: process.env.MELI_CLIENT_ID || "",
+            client_secret: process.env.MELI_CLIENT_SECRET || "",
+            refresh_token: dbRefresh.value
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.access_token) {
+          // Actualizamos la DB con los nuevos tokens
+          await prisma.sistemaConfig.upsert({ where: { key: "MELI_ACCESS_TOKEN" }, update: { value: data.access_token }, create: { key: "MELI_ACCESS_TOKEN", value: data.access_token } });
+          if (data.refresh_token) {
+            await prisma.sistemaConfig.upsert({ where: { key: "MELI_REFRESH_TOKEN" }, update: { value: data.refresh_token }, create: { key: "MELI_REFRESH_TOKEN", value: data.refresh_token } });
+          }
+          if (data.expires_in) {
+            const newExpires = new Date(Date.now() + data.expires_in * 1000);
+            await prisma.sistemaConfig.upsert({ where: { key: "MELI_EXPIRES_AT" }, update: { value: newExpires.toISOString() }, create: { key: "MELI_EXPIRES_AT", value: newExpires.toISOString() } });
+          }
+          token = data.access_token;
+        } else {
+          console.error("Error al refrescar token de ML:", data);
+        }
+      } catch (error) {
+        console.error("Excepción al intentar refrescar el token de ML:", error);
+      }
+    }
+  }
+
+  return token;
+}
+
 export async function searchMarketplaceParts(query: string) {
   try {
     if (!query || query.trim() === "") return [];
@@ -1207,13 +1261,7 @@ export async function searchMarketplaceParts(query: string) {
     let externalResults: any[] = [];
     
     try {
-      let token = process.env.MERCADOLIBRE_ACCESS_TOKEN; // Fallback
-      
-      // Intentar obtener token de la DB
-      const dbToken = await prisma.sistemaConfig.findUnique({ where: { key: "MELI_ACCESS_TOKEN" } });
-      if (dbToken && dbToken.value) {
-        token = dbToken.value;
-      }
+      const token = await getValidMercadoLibreToken();
       const headers: any = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         "Accept": "application/json"
