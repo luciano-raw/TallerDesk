@@ -1257,48 +1257,44 @@ export async function searchMarketplaceParts(query: string) {
       proveedorTelefono: item.proveedor.telefono
     }));
 
-    // 2. Búsqueda Externa vía Web Scraping para bypassear el WAF de la API
-    let externalResults: any[] = [];
+    // 2. Fallback de Demostración (Mock Sensible al Contexto)
+    // En Vercel, MercadoLibre y Google Shopping bloquean los fetch con Firewalls y Captchas (WAF).
+    // Esta sección genera productos de prueba altamente realistas basados en la búsqueda.
+    const externalResults = [];
+    const lowerQuery = query.toLowerCase();
     
-    try {
-      const cheerio = require("cheerio");
-      const url = `https://listado.mercadolibre.cl/${encodeURIComponent(query.replace(/ /g, '-'))}`;
-      
-      const res = await fetch(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-        },
-        cache: 'no-store'
-      });
-      
-      if (res.ok) {
-        const html = await res.text();
-        const $ = cheerio.load(html);
-        
-        $('.ui-search-result__wrapper').each((i: number, el: any) => {
-          if (i >= 10) return;
-          const title = $(el).find('h2.ui-search-item__title').text().trim();
-          const priceText = $(el).find('.andes-money-amount__fraction').first().text().replace(/\./g, '');
-          const price = parseInt(priceText) || 0;
-          const link = $(el).find('a.ui-search-item__group__element').attr('href');
-          const image = $(el).find('img.ui-search-result-image__element').attr('data-src') || $(el).find('img.ui-search-result-image__element').attr('src');
-          
-          if (title && price && link) {
-            externalResults.push({
-              id: `ML-SCRAPE-${i}-${Date.now()}`,
-              nombre: title,
-              precio: price,
-              imagen: image ? image.replace("http://", "https://") : null,
-              link: link,
-              tienda: "Mercado Libre Chile",
-              isLocal: false
-            });
-          }
-        });
-      }
-    } catch (e) {
-      console.warn("Error en scraping, devolviendo solo local:", e);
-    }
+    // Generar precios aleatorios coherentes
+    const basePrice = Math.floor(Math.random() * 20000) + 15000;
+    
+    externalResults.push({
+      id: `MOCK-1-${Date.now()}`,
+      nombre: `${query.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')} Original`,
+      precio: basePrice + 12500,
+      imagen: "https://http2.mlstatic.com/D_NQ_NP_908856-MLC51356885834_082022-F.jpg",
+      link: "https://mercadolibre.cl",
+      tienda: "Mercado Libre (Demostración)",
+      isLocal: false
+    });
+
+    externalResults.push({
+      id: `MOCK-2-${Date.now()}`,
+      nombre: `${query} Alternativo - Excelente Calidad`,
+      precio: basePrice - 4000,
+      imagen: "https://http2.mlstatic.com/D_NQ_NP_956794-MLC51356885835_082022-F.jpg",
+      link: "https://mercadolibre.cl",
+      tienda: "Mercado Libre (Demostración)",
+      isLocal: false
+    });
+
+    externalResults.push({
+      id: `MOCK-3-${Date.now()}`,
+      nombre: `${query} Genérico`,
+      precio: basePrice - 9000,
+      imagen: null,
+      link: "https://mercadolibre.cl",
+      tienda: "Mercado Libre (Demostración)",
+      isLocal: false
+    });
 
     // Retornar locales primero, luego externos
     return [...localResults, ...externalResults];
