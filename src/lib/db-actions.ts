@@ -1175,7 +1175,7 @@ export async function adjustInventarioStock(id: string, cantidadCambio: number) 
 // --- ACCIONES DE MARKETPLACE DE REPUESTOS ---
 
 // Función auxiliar para obtener un token válido de ML (refresca automáticamente si expiró)
-async function getValidMercadoLibreToken(): Promise<string | null> {
+export async function getValidMercadoLibreToken(): Promise<string | null> {
   const dbToken = await prisma.sistemaConfig.findUnique({ where: { key: "MELI_ACCESS_TOKEN" } });
   const dbRefresh = await prisma.sistemaConfig.findUnique({ where: { key: "MELI_REFRESH_TOKEN" } });
   const dbExpires = await prisma.sistemaConfig.findUnique({ where: { key: "MELI_EXPIRES_AT" } });

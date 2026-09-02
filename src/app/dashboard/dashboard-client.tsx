@@ -51,7 +51,8 @@ import {
   assignTrabajoMecanico,
   createTrabajoAdicional,
   updateTrabajoAdicionalEstado,
-  asociarBodegaAOT
+  asociarBodegaAOT,
+  getValidMercadoLibreToken
 } from "@/lib/db-actions";
 import DirectorioView from "./directorio-view";
 import AgendaView from "./agenda-view";
@@ -441,9 +442,62 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
     if (!searchMarketplaceQuery || searchMarketplaceQuery.trim() === "") return;
 
     setLoadingMarketplace(true);
+    setMarketplaceItems([]);
     try {
-      const results = await searchMarketplaceParts(searchMarketplaceQuery);
-      setMarketplaceItems(results);
+      // 1. Obtener resultados locales desde el servidor
+      const localResults = await searchMarketplaceParts(searchMarketplaceQuery);
+      let allResults = [...localResults];
+      setMarketplaceItems(allResults);
+
+      // 2. Obtener resultados de MercadoLibre desde el cliente para evitar el WAF
+      const token = await getValidMercadoLibreToken();
+      if (token) {
+        try {
+          const res = await fetch(`https://api.mercadolibre.com/products/search?status=active&site_id=MLC&q=${encodeURIComponent(searchMarketplaceQuery)}`, {
+            headers: {
+              "Authorization": `Bearer ${token}`
+            }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const externalResults = (data.results || []).map((item: any) => ({
+              id: item.id,
+              nombre: item.name,
+              precio: 0, // El endpoint products no entrega precios directo, requiere otro fetch
+              imagen: item.pictures && item.pictures[0] ? item.pictures[0].url : null,
+              link: `https://articulo.mercadolibre.cl/${item.catalog_product_id}`,
+              tienda: "Mercado Libre Chile",
+              isLocal: false
+            }));
+            
+            // Fetch precios reales para esos catalog items si podemos, o los dejamos en 0.
+            // Una alternativa es usar el endpoint antiguo desde el cliente y probar suerte con el WAF.
+            allResults = [...localResults, ...externalResults];
+            setMarketplaceItems(allResults);
+          }
+          
+          // Intentar el viejo search a ver si pasa desde el cliente
+          const oldRes = await fetch(`https://api.mercadolibre.com/sites/MLC/search?q=${encodeURIComponent(searchMarketplaceQuery)}&limit=10`, {
+             headers: { "Authorization": `Bearer ${token}` }
+          });
+          if (oldRes.ok) {
+             const oldData = await oldRes.json();
+             const oldExternal = (oldData.results || []).map((item: any) => ({
+                id: item.id,
+                nombre: item.title,
+                precio: Number(item.price || 0),
+                imagen: item.thumbnail ? item.thumbnail.replace("http://", "https://") : null,
+                link: item.permalink,
+                tienda: "Mercado Libre Chile",
+                isLocal: false
+             }));
+             // Priorizamos los resultados de oldRes que sí tienen precio
+             setMarketplaceItems([...localResults, ...oldExternal]);
+          }
+        } catch (mlError) {
+          console.error("Error al buscar en MercadoLibre desde el cliente:", mlError);
+        }
+      }
     } catch (err: any) {
       triggerNotification(`❌ Error al buscar: ${err.message}`);
     } finally {
@@ -901,7 +955,15 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           <div className="flex items-center gap-4">
             <span className="font-bold text-lg text-primary tracking-tight">{tallerName}</span>
             <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-bold text-primary capitalize">
-              Roles: {roles.map(r => r.replace("TALLER_", "").toLowerCase()).join(", ")}
+              {roles.map(r => {
+                switch(r) {
+                  case 'SUPER_ADMIN': return 'Súper Admin';
+                  case 'TALLER_JEFE': return 'Jefe de Taller';
+                  case 'TALLER_TECNICO': return 'Mecánico';
+                  case 'TALLER_RECEP': return 'Recepcionista';
+                  default: return r;
+                }
+              }).join(", ")}
             </span>
           </div>
 
