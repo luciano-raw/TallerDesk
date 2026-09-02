@@ -1257,36 +1257,47 @@ export async function searchMarketplaceParts(query: string) {
       proveedorTelefono: item.proveedor.telefono
     }));
 
-    // 2. Búsqueda Externa (Fase 1 - Agnóstico, por ahora simulado usando ML o mock)
+    // 2. Búsqueda Externa vía Web Scraping para bypassear el WAF de la API
     let externalResults: any[] = [];
     
     try {
-      const token = await getValidMercadoLibreToken();
-      const headers: any = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Accept": "application/json"
-      };
-
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
+      const cheerio = require("cheerio");
+      const url = `https://listado.mercadolibre.cl/${encodeURIComponent(query.replace(/ /g, '-'))}`;
       
-      const res = await fetch(`https://api.mercadolibre.com/sites/MLC/search?q=${encodeURIComponent(query)}&limit=10`, { headers });
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+        },
+        cache: 'no-store'
+      });
       
       if (res.ok) {
-        const data = await res.json();
-        externalResults = (data.results || []).map((item: any) => ({
-          id: item.id,
-          nombre: item.title,
-          precio: Number(item.price || 0),
-          imagen: item.thumbnail ? item.thumbnail.replace("http://", "https://") : null,
-          link: item.permalink,
-          tienda: "Mercado Libre Chile",
-          isLocal: false
-        }));
+        const html = await res.text();
+        const $ = cheerio.load(html);
+        
+        $('.ui-search-result__wrapper').each((i: number, el: any) => {
+          if (i >= 10) return;
+          const title = $(el).find('h2.ui-search-item__title').text().trim();
+          const priceText = $(el).find('.andes-money-amount__fraction').first().text().replace(/\./g, '');
+          const price = parseInt(priceText) || 0;
+          const link = $(el).find('a.ui-search-item__group__element').attr('href');
+          const image = $(el).find('img.ui-search-result-image__element').attr('data-src') || $(el).find('img.ui-search-result-image__element').attr('src');
+          
+          if (title && price && link) {
+            externalResults.push({
+              id: `ML-SCRAPE-${i}-${Date.now()}`,
+              nombre: title,
+              precio: price,
+              imagen: image ? image.replace("http://", "https://") : null,
+              link: link,
+              tienda: "Mercado Libre Chile",
+              isLocal: false
+            });
+          }
+        });
       }
     } catch (e) {
-      console.warn("Error en búsqueda externa, devolviendo solo local:", e);
+      console.warn("Error en scraping, devolviendo solo local:", e);
     }
 
     // Retornar locales primero, luego externos
