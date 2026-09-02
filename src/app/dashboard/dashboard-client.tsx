@@ -1730,7 +1730,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           <div className="space-y-6 animate-fade-in">
             <div>
               <h2 className="font-bold text-lg">Marketplace de Repuestos Integrado</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">Busca repuestos reales en Mercado Libre Chile y tiendas locales, y asócialos a tus presupuestos.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Busca repuestos reales en tiendas locales registradas, y asócialos a tus presupuestos.</p>
             </div>
 
             {/* Formulario de Búsqueda */}
@@ -1787,7 +1787,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                       <div className="flex justify-between items-start gap-2">
                         <span className={`text-[8px] font-extrabold px-1.5 py-0.2 rounded uppercase tracking-wider ${
                           item.isLocal ? "bg-emerald-600/20 text-emerald-500 border border-emerald-500/30" : 
-                          item.tienda === "Mercado Libre Chile" ? "bg-amber-600/10 text-amber-500" : "bg-blue-600/10 text-blue-500"
+                          "bg-blue-600/10 text-blue-500"
                         }`}>
                           {item.isLocal ? "⭐ Proveedor Local: " + item.tienda : item.tienda}
                         </span>

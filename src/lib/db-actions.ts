@@ -1174,65 +1174,11 @@ export async function adjustInventarioStock(id: string, cantidadCambio: number) 
 
 // --- ACCIONES DE MARKETPLACE DE REPUESTOS ---
 
-// Función auxiliar para obtener un token válido de ML (refresca automáticamente si expiró)
-export async function getValidMercadoLibreToken(): Promise<string | null> {
-  const dbToken = await prisma.sistemaConfig.findUnique({ where: { key: "MELI_ACCESS_TOKEN" } });
-  const dbRefresh = await prisma.sistemaConfig.findUnique({ where: { key: "MELI_REFRESH_TOKEN" } });
-  const dbExpires = await prisma.sistemaConfig.findUnique({ where: { key: "MELI_EXPIRES_AT" } });
-
-  let token = dbToken?.value || process.env.MERCADOLIBRE_ACCESS_TOKEN || null;
-
-  if (dbExpires && dbRefresh && dbRefresh.value) {
-    const expiresAt = new Date(dbExpires.value).getTime();
-    const now = Date.now();
-    
-    // Si quedan menos de 5 minutos para que expire, o ya expiró, lo refrescamos
-    if (expiresAt - now < 5 * 60 * 1000) {
-      console.log("Token de MercadoLibre expirado o por expirar, refrescando...");
-      try {
-        const res = await fetch("https://api.mercadolibre.com/oauth/token", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Accept": "application/json"
-          },
-          body: new URLSearchParams({
-            grant_type: "refresh_token",
-            client_id: process.env.MELI_CLIENT_ID || "",
-            client_secret: process.env.MELI_CLIENT_SECRET || "",
-            refresh_token: dbRefresh.value
-          })
-        });
-
-        const data = await res.json();
-        if (res.ok && data.access_token) {
-          // Actualizamos la DB con los nuevos tokens
-          await prisma.sistemaConfig.upsert({ where: { key: "MELI_ACCESS_TOKEN" }, update: { value: data.access_token }, create: { key: "MELI_ACCESS_TOKEN", value: data.access_token } });
-          if (data.refresh_token) {
-            await prisma.sistemaConfig.upsert({ where: { key: "MELI_REFRESH_TOKEN" }, update: { value: data.refresh_token }, create: { key: "MELI_REFRESH_TOKEN", value: data.refresh_token } });
-          }
-          if (data.expires_in) {
-            const newExpires = new Date(Date.now() + data.expires_in * 1000);
-            await prisma.sistemaConfig.upsert({ where: { key: "MELI_EXPIRES_AT" }, update: { value: newExpires.toISOString() }, create: { key: "MELI_EXPIRES_AT", value: newExpires.toISOString() } });
-          }
-          token = data.access_token;
-        } else {
-          console.error("Error al refrescar token de ML:", data);
-        }
-      } catch (error) {
-        console.error("Excepción al intentar refrescar el token de ML:", error);
-      }
-    }
-  }
-
-  return token;
-}
-
 export async function searchMarketplaceParts(query: string) {
   try {
     if (!query || query.trim() === "") return [];
     
-    // 1. Buscar en la red local de proveedores (Fase 2)
+    // 1. Buscar en la red local de proveedores
     const localItems = await prisma.marketplaceItem.findMany({
       where: {
         nombre: {
@@ -1253,54 +1199,14 @@ export async function searchMarketplaceParts(query: string) {
       imagen: null,
       link: null,
       tienda: item.proveedor.nombre,
-      isLocal: true, // Flag para la UI
+      isLocal: true,
       proveedorTelefono: item.proveedor.telefono
     }));
 
-    // 2. Fallback de Demostración (Mock Sensible al Contexto)
-    // En Vercel, MercadoLibre y Google Shopping bloquean los fetch con Firewalls y Captchas (WAF).
-    // Esta sección genera productos de prueba altamente realistas basados en la búsqueda.
-    const externalResults = [];
-    const lowerQuery = query.toLowerCase();
-    
-    // Generar precios aleatorios coherentes
-    const basePrice = Math.floor(Math.random() * 20000) + 15000;
-    
-    externalResults.push({
-      id: `MOCK-1-${Date.now()}`,
-      nombre: `${query.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')} Original`,
-      precio: basePrice + 12500,
-      imagen: "https://http2.mlstatic.com/D_NQ_NP_908856-MLC51356885834_082022-F.jpg",
-      link: "https://mercadolibre.cl",
-      tienda: "Mercado Libre (Demostración)",
-      isLocal: false
-    });
-
-    externalResults.push({
-      id: `MOCK-2-${Date.now()}`,
-      nombre: `${query} Alternativo - Excelente Calidad`,
-      precio: basePrice - 4000,
-      imagen: "https://http2.mlstatic.com/D_NQ_NP_956794-MLC51356885835_082022-F.jpg",
-      link: "https://mercadolibre.cl",
-      tienda: "Mercado Libre (Demostración)",
-      isLocal: false
-    });
-
-    externalResults.push({
-      id: `MOCK-3-${Date.now()}`,
-      nombre: `${query} Genérico`,
-      precio: basePrice - 9000,
-      imagen: null,
-      link: "https://mercadolibre.cl",
-      tienda: "Mercado Libre (Demostración)",
-      isLocal: false
-    });
-
-    // Retornar locales primero, luego externos
-    return [...localResults, ...externalResults];
+    return localResults;
   } catch (error: any) {
-    console.error("Error al buscar repuestos en el marketplace:", error);
-    throw new Error(error.message || "Error al buscar repuestos en el marketplace.");
+    console.error("Error al buscar repuestos en el marketplace local:", error);
+    throw new Error("Error al buscar repuestos en el marketplace local.");
   }
 }
 
