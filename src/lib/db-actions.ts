@@ -1806,3 +1806,70 @@ export async function updateLimiteReservas(tallerId: string, limite: number, hor
 
 
 export async function getOTForPrint(id: string) { return await prisma.ordenTrabajo.findUnique({ where: { id }, include: { vehiculo: { include: { cliente: true } }, taller: true, tecnico: true, itemsPresupuesto: { include: { inventarioItem: true } }, trabajosAdicionales: true } }); }
+// --- PROVEEDORES LOCALES (B2B) ---
+
+export async function getProveedores() {
+  return await prisma.proveedor.findMany({
+    include: { items: true },
+    orderBy: { createdAt: 'desc' }
+  });
+}
+
+export async function createProveedor(data: { nombre: string, telefono: string, ciudad: string, direccion?: string }) {
+  try {
+    await prisma.proveedor.create({ data });
+    revalidatePath("/super-admin/proveedores");
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function deleteProveedor(id: string) {
+  try {
+    await prisma.proveedor.delete({ where: { id } });
+    revalidatePath("/super-admin/proveedores");
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function toggleProveedorActivo(id: string) {
+  try {
+    const p = await prisma.proveedor.findUnique({ where: { id } });
+    if (p) {
+      await prisma.proveedor.update({ where: { id }, data: { activo: !p.activo } });
+      revalidatePath("/super-admin/proveedores");
+      return { success: true };
+    }
+    return { success: false, error: "Not found" };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function uploadProveedorCatalog(proveedorId: string, items: any[]) {
+  try {
+    // items is array of { sku, nombre, marca, precio, stock, categoria }
+    // First delete all existing items for this provider
+    await prisma.marketplaceItem.deleteMany({ where: { proveedorId } });
+    // Insert new items
+    await prisma.marketplaceItem.createMany({
+      data: items.map(item => ({
+        proveedorId,
+        sku: item.sku ? String(item.sku) : null,
+        nombre: String(item.nombre || "Sin nombre"),
+        marca: item.marca ? String(item.marca) : null,
+        precio: Number(item.precio) || 0,
+        stock: Number(item.stock) || 0,
+        categoria: item.categoria ? String(item.categoria) : null
+      }))
+    });
+    revalidatePath("/super-admin/proveedores");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Upload error:", err);
+    return { success: false, error: err.message };
+  }
+}
