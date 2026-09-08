@@ -51,10 +51,13 @@ import {
   assignTrabajoMecanico,
   createTrabajoAdicional,
   updateTrabajoAdicionalEstado,
-  asociarBodegaAOT
+  asociarBodegaAOT,
+  getPlantillasServicio,
+  applyPlantillaToOT
 } from "@/lib/db-actions";
 import DirectorioView from "./directorio-view";
 import AgendaView from "./agenda-view";
+import PlantillasView from "./plantillas-view";
 import { ComboboxVehiculo } from "@/components/ui/combobox-vehiculo";
 import { getAllBrands, getModelsForBrand, getYears } from "@/lib/vehicle-data";
 
@@ -88,7 +91,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const [formClient, setFormClient] = useState({ nombre: "", rut: "", telefono: "" });
   const [formVehiculo, setFormVehiculo] = useState({ patente: "", marca: "", modelo: "", año: "", kilometraje: "" });
   const [formOT, setFormOT] = useState({ combustible: "50", observaciones: "", reservaId: "" });
-  const [activeTab, setActiveTab] = useState<"ots" | "crear" | "trabajadores" | "bodega" | "marketplace" | "directorio" | "agenda" | "kanban">("ots");
+  const [activeTab, setActiveTab] = useState<"ots" | "crear" | "trabajadores" | "bodega" | "marketplace" | "directorio" | "agenda" | "kanban" | "plantillas">("ots");
   const [notification, setNotification] = useState<string | null>(null);
 
   const brands = getAllBrands();
@@ -174,6 +177,8 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const [newRoles, setNewRoles] = useState<string[]>([]);
   const [isSavingPermissions, setIsSavingPermissions] = useState(false);
   const [createTrabajoModal, setCreateTrabajoModal] = useState<{otId: string} | null>(null);
+  const [applyPlantillaModal, setApplyPlantillaModal] = useState<{otId: string} | null>(null);
+  const [plantillasDisponibles, setPlantillasDisponibles] = useState<any[]>([]);
   const [newTrabajoData, setNewTrabajoData] = useState({titulo: "", estimacionMinutos: 0, tareas: [] as string[]});
   
   const handleOpenPermissions = (worker: any) => {
@@ -747,6 +752,26 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
     }
   };
 
+  const openApplyPlantilla = async (otId: string) => {
+    setApplyPlantillaModal({ otId });
+    if (plantillasDisponibles.length === 0) {
+      const data = await getPlantillasServicio();
+      setPlantillasDisponibles(data);
+    }
+  };
+
+  const executeApplyPlantilla = async (plantillaId: string) => {
+    if (!applyPlantillaModal) return;
+    try {
+      await applyPlantillaToOT(applyPlantillaModal.otId, plantillaId);
+      triggerNotification("Plantilla aplicada con éxito");
+      setApplyPlantillaModal(null);
+      fetchDbData();
+    } catch (e) {
+      triggerNotification("Error al aplicar plantilla");
+    }
+  };
+
   const handleCreateTrabajo = async (otId: string, titulo: string, tareas: string[], estimacionMinutos?: number) => {
     if (!titulo.trim()) return;
     if (!isDemoMode) {
@@ -974,6 +999,16 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                   >
                     Marketplace
                   </button>
+                  {(roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE") || permisos?.CAN_MANAGE_PLANTILLAS) && (
+                    <button 
+                      onClick={() => setActiveTab("plantillas")} 
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                        activeTab === "plantillas" ? "bg-primary text-white" : "hover:bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      Plantillas
+                    </button>
+                  )}
                 </>
               )}
               {(roles.includes("TALLER_ADMIN") || permisos?.CAN_MANAGE_WORKERS) && (
@@ -1121,12 +1156,20 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                                 )}
                               </div>
                             ))}
-                            <button
-                              onClick={() => setCreateTrabajoModal({ otId: o.id })}
-                              className="text-[10px] text-primary hover:underline text-left mt-1 font-semibold"
-                            >
-                              + Añadir Trabajo
-                            </button>
+                            <div className="flex flex-col items-start gap-1 mt-1">
+                              <button
+                                onClick={() => setCreateTrabajoModal({ otId: o.id })}
+                                className="text-[10px] text-primary hover:underline font-semibold"
+                              >
+                                + Añadir Trabajo Manual
+                              </button>
+                              <button
+                                onClick={() => openApplyPlantilla(o.id)}
+                                className="text-[10px] text-purple-600 hover:underline font-semibold flex items-center gap-1"
+                              >
+                                ✨ Aplicar Plantilla de Servicio
+                              </button>
+                            </div>
                           </div>
                         ) : (
                           <div className="flex flex-col gap-1">
@@ -2652,6 +2695,14 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                     <span className="text-[10px] text-muted-foreground">Agregar, editar o eliminar ítems del inventario.</span>
                   </div>
                 </label>
+
+                <label className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card/50 hover:bg-muted/50 cursor-pointer transition-colors">
+                  <input type="checkbox" checked={newPermissions.CAN_MANAGE_PLANTILLAS || false} onChange={(e) => setNewPermissions({...newPermissions, CAN_MANAGE_PLANTILLAS: e.target.checked})} className="rounded border-input text-primary focus:ring-primary h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold">Gestionar Plantillas</span>
+                    <span className="text-[10px] text-muted-foreground">Crear, editar y eliminar plantillas de servicios.</span>
+                  </div>
+                </label>
               </div>
               </div>
             </div>
@@ -2675,6 +2726,31 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         </div>
       )}
       
+      {applyPlantillaModal && (
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-card w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-border animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-border flex justify-between items-center bg-muted/30">
+              <h2 className="text-lg font-bold">Aplicar Servicio Pre-establecido</h2>
+              <button onClick={() => setApplyPlantillaModal(null)} className="w-8 h-8 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center hover:bg-secondary/80 transition-colors"><X size={16} /></button>
+            </div>
+            <div className="p-5 flex-1 overflow-y-auto space-y-4">
+              {plantillasDisponibles.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No hay plantillas disponibles. Crea una en la sección de Plantillas.</p>
+              ) : (
+                <div className="space-y-2">
+                  {plantillasDisponibles.map(p => (
+                    <button key={p.id} onClick={() => executeApplyPlantilla(p.id)} className="w-full text-left p-4 rounded-xl border border-border hover:border-primary/50 hover:bg-primary/5 transition-colors group">
+                      <div className="font-bold text-sm text-foreground group-hover:text-primary transition-colors">{p.nombre}</div>
+                      <div className="text-xs text-muted-foreground mt-1">{p.trabajos.length} trabajos incluidos</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {createTrabajoModal && (
         <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-card w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-border animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">

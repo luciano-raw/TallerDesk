@@ -521,11 +521,11 @@ export async function createTallerWorker(data: {
     // Definir permisos por defecto según rol
     let defaultPermisos = {};
     if (data.roles.includes("TALLER_ADMIN") || data.roles.includes("TALLER_JEFE")) {
-      defaultPermisos = { CAN_EDIT_OT: true, CAN_DELETE_OT: data.roles.includes("TALLER_ADMIN"), CAN_VIEW_BODEGA: true, CAN_MANAGE_BODEGA: true, CAN_MANAGE_WORKERS: data.roles.includes("TALLER_ADMIN") };
+      defaultPermisos = { CAN_EDIT_OT: true, CAN_DELETE_OT: data.roles.includes("TALLER_ADMIN"), CAN_VIEW_BODEGA: true, CAN_MANAGE_BODEGA: true, CAN_MANAGE_WORKERS: data.roles.includes("TALLER_ADMIN"), CAN_MANAGE_PLANTILLAS: true };
     } else if (data.roles.includes("TALLER_RECEP")) {
-      defaultPermisos = { CAN_EDIT_OT: true, CAN_DELETE_OT: false, CAN_VIEW_BODEGA: false, CAN_MANAGE_BODEGA: false };
+      defaultPermisos = { CAN_EDIT_OT: true, CAN_DELETE_OT: false, CAN_VIEW_BODEGA: false, CAN_MANAGE_BODEGA: false, CAN_MANAGE_PLANTILLAS: false };
     } else if (data.roles.includes("TALLER_TECNICO")) {
-      defaultPermisos = { CAN_EDIT_OT: false, CAN_DELETE_OT: false, CAN_VIEW_BODEGA: false, CAN_MANAGE_BODEGA: false };
+      defaultPermisos = { CAN_EDIT_OT: false, CAN_DELETE_OT: false, CAN_VIEW_BODEGA: false, CAN_MANAGE_BODEGA: false, CAN_MANAGE_PLANTILLAS: false };
     }
 
     // Crear el usuario pre-registrado en Supabase
@@ -1785,4 +1785,83 @@ export async function uploadProveedorCatalog(proveedorId: string, items: any[]) 
     console.error("Upload error:", err);
     return { success: false, error: err.message };
   }
+}
+
+
+// --- PLANTILLAS DE SERVICIO ---
+
+export async function getPlantillasServicio() {
+  const user = await syncUser();
+  if (!user || !user.tallerId) throw new Error("No autorizado");
+
+  return await prisma.plantillaServicio.findMany({
+    where: { tallerId: user.tallerId },
+    include: {
+      trabajos: true,
+    },
+  });
+}
+
+export async function createPlantillaServicio(data: { nombre: string; descripcion?: string; trabajos: { titulo: string; descripcion?: string; costoBase: number; tareas: string[] }[] }) {
+  const user = await syncUser();
+  if (!user || !user.tallerId) throw new Error("No autorizado");
+
+  return await prisma.plantillaServicio.create({
+    data: {
+      nombre: data.nombre,
+      descripcion: data.descripcion,
+      tallerId: user.tallerId,
+      trabajos: {
+        create: data.trabajos.map(t => ({
+          titulo: t.titulo,
+          descripcion: t.descripcion,
+          costoBase: t.costoBase,
+          tareas: t.tareas
+        }))
+      }
+    },
+    include: { trabajos: true }
+  });
+}
+
+export async function deletePlantillaServicio(id: string) {
+  const user = await syncUser();
+  if (!user || !user.tallerId) throw new Error("No autorizado");
+
+  return await prisma.plantillaServicio.deleteMany({
+    where: { id, tallerId: user.tallerId }
+  });
+}
+
+export async function applyPlantillaToOT(otId: string, plantillaId: string) {
+  const user = await syncUser();
+  if (!user || !user.tallerId) throw new Error("No autorizado");
+
+  const plantilla = await prisma.plantillaServicio.findFirst({
+    where: { id: plantillaId, tallerId: user.tallerId },
+    include: { trabajos: true }
+  });
+
+  if (!plantilla) throw new Error("Plantilla no encontrada");
+
+  // Crear cada TrabajoOT basado en la plantilla
+  for (const t of plantilla.trabajos) {
+    await prisma.trabajoOT.create({
+      data: {
+        ordenTrabajoId: otId,
+        titulo: t.titulo,
+        costoManoObra: t.costoBase,
+        estado: "PENDIENTE",
+        tareas: {
+          create: t.tareas.map(tarea => ({
+            tarea: tarea,
+            completada: false,
+            ordenTrabajoId: otId
+          }))
+        }
+      }
+    });
+  }
+
+  return true;
 }

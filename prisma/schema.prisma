@@ -45,9 +45,10 @@ model Taller {
   ots                   OrdenTrabajo[]
   inventario            InventarioItem[]
   reservas              Reserva[]
-  limiteReservasDiarias Int              @default(10) // Límite de vehículos que se pueden agendar en un solo día
-  horaApertura          String           @default("08:00")
-  horaCierre            String           @default("19:00")
+  limiteReservasDiarias Int                 @default(10) // Límite de vehículos que se pueden agendar en un solo día
+  horaApertura          String              @default("08:00")
+  horaCierre            String              @default("19:00")
+  plantillaServicios    PlantillaServicio[]
 }
 
 // Usuarios vinculados a Clerk y un taller respectivo (excepto Super Admins)
@@ -377,3 +378,24 @@ model MarketplaceItem {
   updatedAt DateTime @updatedAt
 }
 
+// Plantillas de servicios pre-establecidos
+model PlantillaServicio {
+  id          String             @id @default(uuid())
+  nombre      String
+  descripcion String?
+  tallerId    String
+  taller      Taller             @relation(fields: [tallerId], references: [id])
+  trabajos    PlantillaTrabajo[]
+  createdAt   DateTime           @default(now())
+}
+
+model PlantillaTrabajo {
+  id          String   @id @default(uuid())
+  titulo      String
+  descripcion String?
+  tareas      String[] // Checklist nativo
+  costoBase   Int      @default(0)
+
+  plantillaId String
+  plantilla   PlantillaServicio @relation(fields: [plantillaId], references: [id], onDelete: Cascade)
+}
