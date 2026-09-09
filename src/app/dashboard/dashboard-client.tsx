@@ -1026,7 +1026,10 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 </button>
               )}
             </nav>
-            <div className="flex items-center gap-4">\n              <button onClick={() => window.location.href="/select-taller"} className="text-xs font-semibold text-gray-500 hover:text-primary transition-colors flex items-center gap-1 bg-gray-100 py-1.5 px-3 rounded-lg"><ExternalLink size={14}/> Cambiar Taller</button>\n              <UserButton />\n            </div>
+            <div className="flex items-center gap-4">
+              <button onClick={() => window.location.href="/select-taller"} className="text-xs font-semibold text-gray-500 hover:text-primary transition-colors flex items-center gap-1 bg-gray-100 py-1.5 px-3 rounded-lg"><ExternalLink size={14}/> Cambiar Taller</button>
+              <UserButton />
+            </div>
           </div>
         </div>
       </header>
@@ -1946,6 +1949,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         {activeTab === "agenda" && (
           <AgendaView 
             tallerId={initialDbUser?.tallerId || "demo-taller"} 
+            tallerSlug={tallerConfig?.slug}
             readOnly={roles.includes("TALLER_TECNICO") && !roles.includes("TALLER_ADMIN") && !roles.includes("TALLER_JEFE") && !roles.includes("TALLER_RECEP")} 
             onConvertToOT={handleConvertToOT} 
           />

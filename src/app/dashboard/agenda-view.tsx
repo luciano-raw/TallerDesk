@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calendar, Clock, Car, User, Settings, CheckCircle2, AlertCircle, Plus, X, ArrowRight } from "lucide-react";
+import { Calendar, Clock, Car, User, Settings, CheckCircle2, AlertCircle, Plus, X, ArrowRight, Link as LinkIcon, Check } from "lucide-react";
 import { getReservas, createReserva, updateReservaEstado, getTallerLimiteReservas, updateLimiteReservas } from "@/lib/db-actions";
 import { ComboboxVehiculo } from "@/components/ui/combobox-vehiculo";
 import { getAllBrands, getModelsForBrand } from "@/lib/vehicle-data";
 
-export default function AgendaView({ tallerId, readOnly = false, onConvertToOT }: { tallerId: string, readOnly?: boolean, onConvertToOT: (reserva: any) => void }) {
+export default function AgendaView({ tallerId, tallerSlug, readOnly = false, onConvertToOT }: { tallerId: string, tallerSlug?: string, readOnly?: boolean, onConvertToOT: (reserva: any) => void }) {
+  const [copied, setCopied] = useState(false);
+  const copyLink = () => { if(tallerSlug) { navigator.clipboard.writeText(window.location.origin + "/taller/" + tallerSlug); setCopied(true); setTimeout(() => setCopied(false), 2000); } };
   const [reservas, setReservas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -111,11 +113,21 @@ export default function AgendaView({ tallerId, readOnly = false, onConvertToOT }
           <h2 className="font-bold text-lg">Agenda del Taller</h2>
           <p className="text-xs text-muted-foreground mt-0.5">Gestiona las citas e ingreso de vehículos. Horario: {horaApertura} a {horaCierre}</p>
         </div>
-        {!readOnly && (
-          <div className="flex gap-2">
+        <div className="flex gap-2">
+          {tallerSlug && (
             <button 
-              onClick={() => setShowSettings(true)}
-              className="bg-muted text-muted-foreground px-4 py-2 rounded-lg text-xs font-semibold hover:bg-muted/80 flex items-center gap-2"
+              onClick={copyLink}
+              className="bg-indigo-50 text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-semibold hover:bg-indigo-100 flex items-center gap-2 transition-colors"
+            >
+              {copied ? <Check size={14} /> : <LinkIcon size={14} />}
+              {copied ? "Copiado!" : "Copiar Link Público"}
+            </button>
+          )}
+          {!readOnly && (
+            <>
+              <button 
+                onClick={() => setShowSettings(true)}
+                className="bg-muted text-muted-foreground px-4 py-2 rounded-lg text-xs font-semibold hover:bg-muted/80 flex items-center gap-2"
             >
               <Settings size={14} /> Configuración
             </button>
@@ -128,8 +140,9 @@ export default function AgendaView({ tallerId, readOnly = false, onConvertToOT }
             >
               <Plus size={14} /> Nueva Cita
             </button>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
