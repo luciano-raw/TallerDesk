@@ -18,12 +18,19 @@ export default function BookingForm({ tallerId }: { tallerId: string }) {
   });
 
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedTime, setSelectedTime] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedDate || !selectedTime) return;
     setStatus('submitting');
     try {
-      await createPublicReserva(tallerId, formData);
+      const finalData = {
+        ...formData,
+        fechaHora: `${selectedDate}T${selectedTime}`
+      };
+      await createPublicReserva(tallerId, finalData);
       setStatus('success');
     } catch (error) {
       console.error(error);
@@ -42,6 +49,8 @@ export default function BookingForm({ tallerId }: { tallerId: string }) {
             setFormData({
               clienteNombre: '', clienteRut: '', clienteTelefono: '', patente: '', marca: '', modelo: '', fechaHora: '', tipoServicio: '', observaciones: ''
             });
+            setSelectedDate('');
+            setSelectedTime('');
             setStatus('idle');
           }}
           className="bg-primary hover:bg-primary/90 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
@@ -93,9 +102,24 @@ export default function BookingForm({ tallerId }: { tallerId: string }) {
           <label className="block text-sm font-semibold mb-1 text-foreground">Motivo o Servicio Deseado *</label>
           <input required type="text" value={formData.tipoServicio} onChange={e => setFormData({...formData, tipoServicio: e.target.value})} className="w-full border bg-background text-foreground border-input rounded-lg p-2.5 text-sm" placeholder="Ej: Mantención 10.000Km, Ruidos extraños..." />
         </div>
-        <div>
-          <label className="block text-sm font-semibold mb-1 text-foreground">Fecha y Hora Propuesta *</label>
-          <input required type="datetime-local" value={formData.fechaHora} onChange={e => setFormData({...formData, fechaHora: e.target.value})} className="w-full border bg-background text-foreground border-input rounded-lg p-2.5 text-sm" />
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-semibold mb-1 text-foreground">Fecha Propuesta *</label>
+            <input required type="date" min={new Date().toISOString().split('T')[0]} value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full border bg-background text-foreground border-input rounded-lg p-2.5 text-sm" />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold mb-1 text-foreground">Hora *</label>
+            <select required value={selectedTime} onChange={e => setSelectedTime(e.target.value)} className="w-full border bg-background text-foreground border-input rounded-lg p-2.5 text-sm">
+              <option value="" disabled>Selecciona hora</option>
+              {Array.from({ length: 20 }).map((_, i) => {
+                const hour = Math.floor(i / 2) + 9; // starts at 9:00
+                const mins = i % 2 === 0 ? '00' : '30';
+                const timeString = `${hour.toString().padStart(2, '0')}:${mins}`;
+                return <option key={timeString} value={timeString}>{timeString}</option>;
+              })}
+            </select>
+          </div>
         </div>
       </div>
 
