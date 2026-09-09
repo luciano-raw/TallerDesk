@@ -518,7 +518,11 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const fetchDbData = async (activeOtId?: string) => {
     const tallerId = initialDbUser?.tallerId;
     if (!isDemoMode && tallerId) {
-      const dbOts = await getTallerOTs(tallerId);
+      const [dbOts, config] = await Promise.all([
+        getTallerOTs(tallerId),
+        getTallerConfig(tallerId)
+      ]);
+      setTallerConfig(config);
       const mappedOts = dbOts.map((dbOt: any) => {
         const manoObra = Number(dbOt.costoManoObra || 0);
         const total = Number(dbOt.costoTotal || 0);
