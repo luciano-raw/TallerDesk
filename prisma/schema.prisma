@@ -62,8 +62,8 @@ model Taller {
 // Usuarios vinculados a Clerk y un taller respectivo (excepto Super Admins)
 model Usuario {
   id       String  @id @default(uuid())
-  clerkId  String? @unique // Nullable para permitir pre-registro mediante correo
-  email    String  @unique
+  clerkId  String? // Nullable para permitir pre-registro mediante correo
+  email    String
   nombre   String
   roles    Role[]  @default([TALLER_TECNICO])
   permisos Json?   @default("{}") // Permisos personalizados por usuario

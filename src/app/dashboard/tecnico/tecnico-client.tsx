@@ -6,7 +6,8 @@ import Link from "next/link";
 import { 
   Wrench, 
   Car, 
-  Camera, 
+  Camera,
+    ExternalLink, 
   MessageSquare, 
   AlertCircle, 
   ChevronRight, 
@@ -275,7 +276,10 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
             <span className="font-black text-base tracking-tight">TallerDesk Tech</span>
           </div>
         </div>
-        <UserButton />
+        <div className="flex items-center gap-3">
+            <button onClick={() => window.location.href="/select-taller"} className="text-xs font-semibold text-gray-500 hover:text-primary transition-colors flex items-center gap-1 bg-gray-100 py-1.5 px-3 rounded-lg"><ExternalLink size={14}/> Cambiar Taller</button>
+            <UserButton />
+        </div>
       </header>
 
       <div className="bg-primary/5 border-b border-border p-4 flex items-center justify-between">

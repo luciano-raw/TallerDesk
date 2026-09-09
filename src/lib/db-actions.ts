@@ -440,7 +440,7 @@ export async function assignOTMecanico(id: string, tecnicoId: string | null) {
     });
     
     const mec = tecnicoId 
-      ? await prisma.usuario.findUnique({ where: { id: tecnicoId } }) 
+      ? await prisma.usuario.findFirst({ where: { id: tecnicoId } }) 
       : null;
     await logOTAction(id, mec ? `Mecánico asignado: ${mec.nombre}` : "Mecánico desasignado de la orden");
 
@@ -495,7 +495,7 @@ export async function createTallerWorker(data: {
     const emailFormatted = data.email.toLowerCase().trim();
 
     // Validar si el email ya está registrado en el sistema
-    const existing = await prisma.usuario.findUnique({
+    const existing = await prisma.usuario.findFirst({
       where: { email: emailFormatted }
     });
 
@@ -572,14 +572,14 @@ export async function getCurrentUserDbProfile(clerkData: { id: string, email: st
     const emailLower = email.toLowerCase().trim();
     
     // Buscar usuario
-    let dbUser = await prisma.usuario.findUnique({
+    let dbUser = await prisma.usuario.findFirst({
       where: { clerkId },
       include: { taller: true }
     });
     
     if (!dbUser) {
       // Ver si existe por email
-      const existingEmail = await prisma.usuario.findUnique({
+      const existingEmail = await prisma.usuario.findFirst({
         where: { email: emailLower }
       });
 
@@ -1244,7 +1244,7 @@ export async function upgradeToAdmin() {
     const email = clerkUser.emailAddresses[0]?.emailAddress;
     if (!email) return { success: false, error: "Sin email" };
 
-    let dbUser = await prisma.usuario.findUnique({ where: { clerkId: clerkUser.id } });
+    let dbUser = await prisma.usuario.findFirst({ where: { clerkId: clerkUser.id } });
     if (!dbUser) return { success: false, error: "Usuario no encontrado" };
 
     let taller = await prisma.taller.findFirst({ where: { slug: 'taller-demo-propio' } });
@@ -1912,4 +1912,10 @@ export async function getTallerConfig(tallerId: string) {
   const user = await syncUser();
   if (!user || user.tallerId !== tallerId) throw new Error("No autorizado");
   return await prisma.taller.findUnique({ where: { id: tallerId } });
+}
+
+// --- MULTI-TALLER SELECTION ---
+import { cookies } from "next/headers";
+export async function setActiveTallerCookie(tallerId: string) {
+  (await cookies()).set("tallerdesk_active_taller", tallerId, { maxAge: 60 * 60 * 24 * 30 });
 }

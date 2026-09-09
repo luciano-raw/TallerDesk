@@ -1026,7 +1026,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 </button>
               )}
             </nav>
-            <UserButton />
+            <div className="flex items-center gap-4">\n              <button onClick={() => window.location.href="/select-taller"} className="text-xs font-semibold text-gray-500 hover:text-primary transition-colors flex items-center gap-1 bg-gray-100 py-1.5 px-3 rounded-lg"><ExternalLink size={14}/> Cambiar Taller</button>\n              <UserButton />\n            </div>
           </div>
         </div>
       </header>

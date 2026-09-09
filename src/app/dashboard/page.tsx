@@ -9,6 +9,10 @@ export default async function DashboardPage() {
   // Sincroniza el usuario autenticado de Clerk con Supabase
   const dbUser = await syncUser();
 
+  if (dbUser && dbUser._requiresTallerSelection) {
+    redirect("/select-taller");
+  }
+
   if (!dbUser) {
     // Si no está logueado o estamos en modo demo (sin credenciales reales),
     // renderizamos el DashboardClient normal
