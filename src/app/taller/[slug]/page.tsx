@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import BookingForm from "./booking-form";
 import { MapPin, Phone, Clock, Mail } from "lucide-react";
 
-export default async function PublicTallerPage({ params }: { params: { slug: string } }) {
-  const taller = await getPublicTallerInfo(params.slug);
+export default async function PublicTallerPage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = await params;
+  const taller = await getPublicTallerInfo(resolvedParams.slug);
 
   if (!taller) {
     notFound();
