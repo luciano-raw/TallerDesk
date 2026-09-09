@@ -1907,7 +1907,11 @@ export async function createPublicReserva(tallerId: string, data: any) {
 
 export async function getTallerConfig(tallerId: string) {
   const user = await syncUser();
-  if (!user || user.tallerId !== tallerId) throw new Error("No autorizado");
+  if (!user) throw new Error("No autenticado");
+  // Check if user belongs to this taller, or has it in available, or is super admin
+  if (user.tallerId !== tallerId && !user.roles?.includes("SUPER_ADMIN") && !user.talleresDisponibles?.some((t:any) => t.id === tallerId)) {
+    throw new Error("No autorizado para este taller");
+  }
   return await prisma.taller.findUnique({ where: { id: tallerId } });
 }
 
