@@ -494,28 +494,25 @@ export async function createTallerWorker(data: {
   try {
     const emailFormatted = data.email.toLowerCase().trim();
 
-    // Validar si el email ya está registrado en el sistema
-    const existing = await prisma.usuario.findFirst({
+    // Validar si el email ya está registrado en este taller específicamente
+    const existingInThisTaller = await prisma.usuario.findFirst({
+      where: { email: emailFormatted, tallerId: data.tallerId }
+    });
+
+    if (existingInThisTaller) {
+      return { success: false, error: "Este correo ya está registrado en tu taller." };
+    }
+
+    // Buscar si el email existe en OTRO taller para heredar su clerkId y nombre
+    const existingAnywhere = await prisma.usuario.findFirst({
       where: { email: emailFormatted }
     });
 
-    if (existing) {
-      if (existing.tallerId === data.tallerId) {
-        return { success: false, error: "Este correo ya está registrado en tu taller." };
-      } else if (existing.tallerId) {
-        return { success: false, error: "Este correo ya está registrado en otro taller." };
-      } else {
-        // Si el usuario existía pero estaba huérfano, lo vinculamos a este taller
-        const actualizado = await prisma.usuario.update({
-          where: { id: existing.id },
-          data: {
-            tallerId: data.tallerId,
-            roles: data.roles
-          }
-        });
-        revalidatePath("/dashboard");
-        return { success: true, worker: actualizado };
-      }
+    let clerkIdToUse = null;
+    let nombreToUse = data.nombre;
+
+    if (existingAnywhere) {
+      clerkIdToUse = existingAnywhere.clerkId;
     }
 
     // Definir permisos por defecto según rol
@@ -528,12 +525,12 @@ export async function createTallerWorker(data: {
       defaultPermisos = { CAN_EDIT_OT: false, CAN_DELETE_OT: false, CAN_VIEW_BODEGA: false, CAN_MANAGE_BODEGA: false, CAN_MANAGE_PLANTILLAS: false };
     }
 
-    // Crear el usuario pre-registrado en Supabase
+    // Crear el usuario pre-registrado (o multi-taller) en Supabase
     const nuevo = await prisma.usuario.create({
       data: {
-        clerkId: null, // Se vinculará automáticamente al iniciar sesión
+        clerkId: clerkIdToUse, // Heredado o null si es nuevo
         email: emailFormatted,
-        nombre: data.nombre,
+        nombre: nombreToUse,
         roles: data.roles,
         tallerId: data.tallerId,
         permisos: defaultPermisos
