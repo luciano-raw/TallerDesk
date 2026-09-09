@@ -440,9 +440,10 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
                 </span>
                 <div className="space-y-2">
                   {activeOT.checklist.map((item: any) => (
-                    <label 
+                    <div 
                       key={item.id} 
-                      className={`flex items-center gap-3 p-3.5 border rounded-xl cursor-pointer transition-all ${
+                      onClick={() => handleToggleChecklist(activeOT.trabajoId, item.id)}
+                      className={`flex items-center gap-3 p-3.5 border rounded-xl cursor-pointer select-none transition-all ${
                         item.completada 
                           ? 'bg-success/5 border-success/30' 
                           : 'bg-background border-border hover:border-primary/50'
@@ -456,7 +457,7 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
                       <span className={`font-semibold text-sm transition-all ${item.completada ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                         {item.tarea}
                       </span>
-                    </label>
+                    </div>
                   ))}
                 </div>
               </div>
