@@ -33,15 +33,15 @@ export default function PerfilView({ config, onUpdate }: { config: any, onUpdate
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
-      <div className="bg-white border p-6 rounded-xl shadow-sm">
+      <div className="bg-card border-border p-6 rounded-xl shadow-sm">
         <h2 className="text-xl font-bold mb-2">Perfil Público del Taller</h2>
-        <p className="text-sm text-gray-500 mb-6">Configura la información que verán tus clientes en tu página pública de agendamiento.</p>
+        <p className="text-sm text-muted-foreground mb-6">Configura la información que verán tus clientes en tu página pública de agendamiento.</p>
         
         {config?.slug && (
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+          <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-blue-800 uppercase tracking-wider mb-1">Tu Enlace Público</p>
-              <a href={publicUrl} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline flex items-center gap-2">
+              <p className="text-xs font-semibold text-foreground uppercase tracking-wider mb-1">Tu Enlace Público</p>
+              <a href={publicUrl} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline flex items-center gap-2">
                 {publicUrl} <ExternalLink className="w-3 h-3" />
               </a>
             </div>
@@ -54,7 +54,7 @@ export default function PerfilView({ config, onUpdate }: { config: any, onUpdate
             <textarea 
               value={formData.descripcionPublica} 
               onChange={e => setFormData({...formData, descripcionPublica: e.target.value})}
-              className="w-full border rounded-lg p-3 text-sm min-h-[100px]"
+              className="w-full bg-background border-input text-foreground rounded-lg p-3 text-sm min-h-[100px]"
               placeholder="Ej: Somos un taller multimarca especializado en frenos y suspensión con más de 10 años de experiencia..."
             />
           </div>
@@ -66,7 +66,7 @@ export default function PerfilView({ config, onUpdate }: { config: any, onUpdate
                 type="text"
                 value={formData.horarioAtencion} 
                 onChange={e => setFormData({...formData, horarioAtencion: e.target.value})}
-                className="w-full border rounded-lg p-2 text-sm"
+                className="w-full bg-background border-input text-foreground rounded-lg p-2 text-sm"
                 placeholder="Ej: Lun a Vie 09:00 a 18:00 hrs"
               />
             </div>
@@ -76,7 +76,7 @@ export default function PerfilView({ config, onUpdate }: { config: any, onUpdate
                 type="text"
                 value={formData.telefonoContacto} 
                 onChange={e => setFormData({...formData, telefonoContacto: e.target.value})}
-                className="w-full border rounded-lg p-2 text-sm"
+                className="w-full bg-background border-input text-foreground rounded-lg p-2 text-sm"
                 placeholder="Ej: +56 9 1234 5678"
               />
             </div>
@@ -86,7 +86,7 @@ export default function PerfilView({ config, onUpdate }: { config: any, onUpdate
                 type="email"
                 value={formData.emailContacto} 
                 onChange={e => setFormData({...formData, emailContacto: e.target.value})}
-                className="w-full border rounded-lg p-2 text-sm"
+                className="w-full bg-background border-input text-foreground rounded-lg p-2 text-sm"
                 placeholder="Ej: contacto@mitaller.cl"
               />
             </div>
@@ -96,7 +96,7 @@ export default function PerfilView({ config, onUpdate }: { config: any, onUpdate
                 type="text"
                 value={formData.ubicacion} 
                 onChange={e => setFormData({...formData, ubicacion: e.target.value})}
-                className="w-full border rounded-lg p-2 text-sm"
+                className="w-full bg-background border-input text-foreground rounded-lg p-2 text-sm"
                 placeholder="Ej: Av. Principal 123, Santiago"
               />
             </div>
@@ -106,7 +106,7 @@ export default function PerfilView({ config, onUpdate }: { config: any, onUpdate
                 type="text"
                 value={formData.logoUrl} 
                 onChange={e => setFormData({...formData, logoUrl: e.target.value})}
-                className="w-full border rounded-lg p-2 text-sm"
+                className="w-full bg-background border-input text-foreground rounded-lg p-2 text-sm"
                 placeholder="Ej: https://misitio.com/logo.png"
               />
             </div>

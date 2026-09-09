@@ -1026,14 +1026,26 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 </>
               )}
               {(roles.includes("TALLER_ADMIN") || permisos?.CAN_MANAGE_WORKERS) && (
-                <button 
-                  onClick={() => setActiveTab("trabajadores")} 
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                <>
+                  {roles.includes("TALLER_ADMIN") && (
+                    <button 
+                      onClick={() => setActiveTab("perfil")} 
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                        activeTab === "perfil" ? "bg-primary text-white" : "hover:bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      Perfil Web
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => setActiveTab("trabajadores")} 
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                     activeTab === "trabajadores" ? "bg-primary text-white" : "hover:bg-muted text-muted-foreground"
                   }`}
                 >
                   Trabajadores
                 </button>
+                </>
               )}
             </nav>
             <div className="flex items-center gap-4">
