@@ -35,6 +35,14 @@ model Taller {
   activo          Boolean  @default(true)
   plan            String   @default("BASIC") // BASIC, PREMIUM, etc.
   ubicacion       String? // Dirección/Ubicación del taller
+  
+  // Campos para la vista pública / Landing Page
+  descripcionPublica String? @db.Text
+  horarioAtencion    String?
+  telefonoContacto   String?
+  emailContacto      String?
+  logoUrl            String?
+
   maxTrabajadores Int      @default(5) // Límite de mecánicos/trabajadores
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

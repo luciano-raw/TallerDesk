@@ -53,11 +53,14 @@ import {
   updateTrabajoAdicionalEstado,
   asociarBodegaAOT,
   getPlantillasServicio,
-  applyPlantillaToOT
+  applyPlantillaToOT,
+  getTallerConfig,
+  updateTallerProfile
 } from "@/lib/db-actions";
 import DirectorioView from "./directorio-view";
 import AgendaView from "./agenda-view";
 import PlantillasView from "./plantillas-view";
+import PerfilView from "./perfil-view";
 import { ComboboxVehiculo } from "@/components/ui/combobox-vehiculo";
 import { getAllBrands, getModelsForBrand, getYears } from "@/lib/vehicle-data";
 
@@ -91,7 +94,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const [formClient, setFormClient] = useState({ nombre: "", rut: "", telefono: "" });
   const [formVehiculo, setFormVehiculo] = useState({ patente: "", marca: "", modelo: "", año: "", kilometraje: "" });
   const [formOT, setFormOT] = useState({ combustible: "50", observaciones: "", reservaId: "" });
-  const [activeTab, setActiveTab] = useState<"ots" | "crear" | "trabajadores" | "bodega" | "marketplace" | "directorio" | "agenda" | "kanban" | "plantillas">("ots");
+  const [activeTab, setActiveTab] = useState<"ots" | "crear" | "trabajadores" | "bodega" | "marketplace" | "directorio" | "agenda" | "kanban" | "plantillas" | "perfil">("ots");
   const [notification, setNotification] = useState<string | null>(null);
 
   const brands = getAllBrands();
@@ -179,6 +182,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const [createTrabajoModal, setCreateTrabajoModal] = useState<{otId: string} | null>(null);
   const [applyPlantillaModal, setApplyPlantillaModal] = useState<{otId: string} | null>(null);
   const [plantillasDisponibles, setPlantillasDisponibles] = useState<any[]>([]);
+  const [tallerConfig, setTallerConfig] = useState<any>(null);
   const [newTrabajoData, setNewTrabajoData] = useState({titulo: "", estimacionMinutos: 0, tareas: [] as string[]});
   
   const handleOpenPermissions = (worker: any) => {
@@ -1028,6 +1032,15 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
       </header>
 
       <main className="flex-1 container mx-auto px-4 py-8 max-w-7xl">
+        {roles.includes("TALLER_ADMIN") && tallerConfig && (!tallerConfig.descripcionPublica || !tallerConfig.horarioAtencion || !tallerConfig.telefonoContacto) && (
+          <div className="mb-6 bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center justify-between shadow-sm animate-fade-in">
+            <div>
+              <h3 className="text-amber-800 font-bold text-sm">⚠️ Perfil Público Incompleto</h3>
+              <p className="text-amber-700 text-xs mt-1">Completa la información de tu taller para que los clientes puedan agendar horas web desde tu Landing Page.</p>
+            </div>
+            <button onClick={() => setActiveTab("perfil")} className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">Configurar Perfil</button>
+          </div>
+        )}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-card border border-border p-4 rounded-xl">
             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">Autos en Taller</p>
@@ -2841,6 +2854,13 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* PESTAÑA: PERFIL */}
+      {activeTab === "perfil" && (
+        <div className="pt-6">
+          <PerfilView config={tallerConfig} onUpdate={fetchDbData} />
         </div>
       )}
 

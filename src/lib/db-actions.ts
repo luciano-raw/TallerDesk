@@ -1865,3 +1865,51 @@ export async function applyPlantillaToOT(otId: string, plantillaId: string) {
 
   return true;
 }
+
+// --- FUNCIONES PÚBLICAS Y PERFIL TALLER ---
+
+export async function updateTallerProfile(tallerId: string, data: any) {
+  const user = await syncUser();
+  if (!user || user.tallerId !== tallerId) throw new Error("No autorizado");
+  return await prisma.taller.update({ where: { id: tallerId }, data });
+}
+
+export async function getPublicTallerInfo(slug: string) {
+  const taller = await prisma.taller.findUnique({ where: { slug } });
+  if (!taller || !taller.activo) return null;
+  return {
+    id: taller.id,
+    nombre: taller.nombre,
+    slug: taller.slug,
+    descripcionPublica: taller.descripcionPublica,
+    horarioAtencion: taller.horarioAtencion,
+    telefonoContacto: taller.telefonoContacto,
+    emailContacto: taller.emailContacto,
+    logoUrl: taller.logoUrl,
+    ubicacion: taller.ubicacion
+  };
+}
+
+export async function createPublicReserva(tallerId: string, data: any) {
+  return await prisma.reserva.create({
+    data: {
+      tallerId,
+      clienteNombre: data.clienteNombre,
+      clienteRut: data.clienteRut || "",
+      clienteTelefono: data.clienteTelefono,
+      patente: data.patente,
+      marca: data.marca,
+      modelo: data.modelo,
+      fechaHora: new Date(data.fechaHora),
+      tipoServicio: data.tipoServicio,
+      observaciones: data.observaciones,
+      estado: "AGENDADA"
+    }
+  });
+}
+
+export async function getTallerConfig(tallerId: string) {
+  const user = await syncUser();
+  if (!user || user.tallerId !== tallerId) throw new Error("No autorizado");
+  return await prisma.taller.findUnique({ where: { id: tallerId } });
+}
