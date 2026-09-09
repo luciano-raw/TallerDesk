@@ -1,8 +1,41 @@
 import { getPublicTallerInfo } from "@/lib/db-actions";
 import { notFound } from "next/navigation";
+import { Metadata } from "next";
 import BookingForm from "./booking-form";
 import { MapPin, Phone, Clock, Mail } from "lucide-react";
 import { ThemeToggleButton } from "@/components/theme-toggle-button";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const resolvedParams = await params;
+  const taller = await getPublicTallerInfo(resolvedParams.slug);
+
+  if (!taller) {
+    return {
+      title: 'Taller No Encontrado - TallerDesk',
+      description: 'El taller que buscas no existe o no está disponible.',
+    };
+  }
+
+  return {
+    title: `${taller.nombre} - Agenda tu hora | TallerDesk`,
+    description: taller.descripcionPublica || `Reserva tu hora en ${taller.nombre}. Gestionado por TallerDesk.`,
+    openGraph: {
+      title: `${taller.nombre} - Agenda tu hora | TallerDesk`,
+      description: taller.descripcionPublica || `Reserva tu hora en ${taller.nombre}. Gestionado por TallerDesk.`,
+      url: `https://tallerdesk.com/taller/${resolvedParams.slug}`,
+      siteName: 'TallerDesk',
+      images: taller.logoUrl ? [{ url: taller.logoUrl }] : [],
+      locale: 'es_CL',
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${taller.nombre} - TallerDesk`,
+      description: taller.descripcionPublica || `Reserva tu hora en ${taller.nombre}.`,
+      images: taller.logoUrl ? [taller.logoUrl] : [],
+    }
+  };
+}
 
 export default async function PublicTallerPage({ params }: { params: Promise<{ slug: string }> }) {
   const resolvedParams = await params;
