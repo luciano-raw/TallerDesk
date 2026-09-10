@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { createPublicReserva } from '@/lib/db-actions';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { CheckCircle2, Loader2, Calendar } from 'lucide-react';
+import { DatePickerModal } from '@/components/ui/date-picker-modal';
 
 export default function BookingForm({ tallerId }: { tallerId: string }) {
   const [formData, setFormData] = useState({
@@ -20,6 +21,7 @@ export default function BookingForm({ tallerId }: { tallerId: string }) {
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,7 +108,23 @@ export default function BookingForm({ tallerId }: { tallerId: string }) {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-semibold mb-1 text-foreground">Fecha Propuesta *</label>
-            <input required type="date" min={new Date().toISOString().split('T')[0]} value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full border bg-background text-foreground border-input rounded-lg p-2.5 text-sm" />
+            <div className="relative">
+              <button 
+                type="button"
+                onClick={() => setIsDatePickerOpen(true)}
+                className={`w-full border bg-background text-left flex items-center justify-between border-input rounded-lg p-2.5 text-sm transition-colors hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 ${!selectedDate ? 'text-muted-foreground' : 'text-foreground font-medium'}`}
+              >
+                {selectedDate ? new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'Seleccionar fecha'}
+                <Calendar size={16} className="text-muted-foreground" />
+              </button>
+            </div>
+            
+            <DatePickerModal 
+              isOpen={isDatePickerOpen} 
+              onClose={() => setIsDatePickerOpen(false)} 
+              selectedDate={selectedDate} 
+              onSelect={setSelectedDate} 
+            />
           </div>
           <div>
             <label className="block text-sm font-semibold mb-1 text-foreground">Hora *</label>
