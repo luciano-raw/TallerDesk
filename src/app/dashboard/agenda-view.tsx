@@ -3,10 +3,12 @@
 import { useState, useEffect } from "react";
 import { Calendar, Clock, Car, User, Settings, CheckCircle2, AlertCircle, Plus, X, ArrowRight, Link as LinkIcon, Check } from "lucide-react";
 import { getReservas, createReserva, updateReservaEstado, getTallerLimiteReservas, updateLimiteReservas } from "@/lib/db-actions";
+import { WeeklyCalendar } from "./weekly-calendar";
 import { ComboboxVehiculo } from "@/components/ui/combobox-vehiculo";
 import { getAllBrands, getModelsForBrand } from "@/lib/vehicle-data";
 
 export default function AgendaView({ tallerId, tallerSlug, readOnly = false, onConvertToOT }: { tallerId: string, tallerSlug?: string, readOnly?: boolean, onConvertToOT: (reserva: any) => void }) {
+    const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
   const [copied, setCopied] = useState(false);
   const copyLink = () => { if(tallerSlug) { navigator.clipboard.writeText(window.location.origin + "/taller/" + tallerSlug); setCopied(true); setTimeout(() => setCopied(false), 2000); } };
   const [reservas, setReservas] = useState<any[]>([]);
@@ -33,19 +35,31 @@ export default function AgendaView({ tallerId, tallerSlug, readOnly = false, onC
 
   useEffect(() => {
     fetchData();
-  }, [selectedDate, tallerId]);
+  }, [selectedDate, tallerId, viewMode]);
+
 
   const fetchData = async () => {
     setLoading(true);
     const start = new Date(selectedDate);
-    start.setHours(0, 0, 0, 0);
     const end = new Date(selectedDate);
-    end.setHours(23, 59, 59, 999);
+    
+    if (viewMode === 'week') {
+      const day = start.getDay();
+      const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+      start.setDate(diff);
+      start.setHours(0, 0, 0, 0);
+      end.setDate(start.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+    } else {
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+    }
     
     const [res, config] = await Promise.all([
       getReservas(tallerId, start, end),
       getTallerLimiteReservas(tallerId)
     ]);
+
     
     setReservas(res);
     setLimiteDiario(config.limite);
@@ -110,7 +124,23 @@ export default function AgendaView({ tallerId, tallerSlug, readOnly = false, onC
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="font-bold text-lg">Agenda del Taller</h2>
+          <div className="flex items-center gap-4">
+            <h2 className="font-bold text-lg">Agenda del Taller</h2>
+            <div className="bg-muted/50 p-1 rounded-lg flex items-center border border-border">
+              <button 
+                onClick={() => setViewMode('day')}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${viewMode === 'day' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Día
+              </button>
+              <button 
+                onClick={() => setViewMode('week')}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${viewMode === 'week' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Semana
+              </button>
+            </div>
+          </div>
           <p className="text-xs text-muted-foreground mt-0.5">Gestiona las citas e ingreso de vehículos. Horario: {horaApertura} a {horaCierre}</p>
         </div>
         <div className="flex gap-2">
@@ -146,23 +176,31 @@ export default function AgendaView({ tallerId, tallerSlug, readOnly = false, onC
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="md:col-span-1 bg-card border border-border rounded-xl p-4">
+        <div className="md:col-span-1 bg-card border border-border rounded-xl p-4 h-fit">
           <input 
             type="date" 
             value={selectedDate.toISOString().split("T")[0]} 
-            onChange={(e) => setSelectedDate(new Date(e.target.value + "T00:00:00"))}
+            onChange={(e) => setSelectedDate(new Date(e.target.value + "T12:00:00"))}
             className="w-full p-2 rounded-lg border border-input bg-background text-sm"
           />
           <div className="mt-4 space-y-2 text-xs">
             <div className="flex justify-between items-center p-2 bg-muted/30 rounded-lg">
-              <span className="text-muted-foreground">Reservas hoy:</span>
-              <span className="font-bold">{reservas.length} / {limiteDiario}</span>
+              <span className="text-muted-foreground">Reservas:</span>
+              <span className="font-bold">{reservas.length} {viewMode === 'day' && `/ ${limiteDiario}`}</span>
             </div>
           </div>
         </div>
         <div className="md:col-span-3 space-y-4">
           {loading ? (
             <p className="text-sm text-muted-foreground">Cargando agenda...</p>
+          ) : viewMode === 'week' ? (
+            <WeeklyCalendar 
+              reservas={reservas} 
+              selectedDate={selectedDate} 
+              horaApertura={horaApertura} 
+              horaCierre={horaCierre}
+              onConvertToOT={(r: any) => onConvertToOT(r)}
+            />
           ) : reservas.length === 0 ? (
             <div className="text-center py-10 bg-muted/20 border border-dashed border-border rounded-xl">
               <Calendar className="mx-auto h-8 w-8 text-muted-foreground mb-3 opacity-50" />
