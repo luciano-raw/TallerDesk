@@ -361,7 +361,14 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
     try {
       if (!isDemoMode) {
         if (editingBodegaItem) {
-          const res = await updateInventarioItem(editingBodegaItem.id, newBodegaItem);
+                    const payload = {
+            ...newBodegaItem,
+            cantidad: Number(newBodegaItem.cantidad) || 0,
+            stockMinimo: Number(newBodegaItem.stockMinimo) || 0,
+            precioUnitario: Number(newBodegaItem.precioUnitario) || 0,
+            precioVenta: Number(newBodegaItem.precioVenta) || 0
+          };
+          const res = await updateInventarioItem(editingBodegaItem.id, payload);
           if (res.success) {
             triggerNotification("🟢 Ítem editado en Bodega.");
             setEditingBodegaItem(null);
@@ -371,14 +378,21 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
             triggerNotification(`❌ Error: ${res.error}`);
           }
         } else {
+          const payload = {
+            ...newBodegaItem,
+            cantidad: Number(newBodegaItem.cantidad) || 0,
+            stockMinimo: Number(newBodegaItem.stockMinimo) || 0,
+            precioUnitario: Number(newBodegaItem.precioUnitario) || 0,
+            precioVenta: Number(newBodegaItem.precioVenta) || 0
+          };
           const res = await createInventarioItem({
             tallerId,
-            ...newBodegaItem
+            ...payload
           });
           if (res.success) {
             triggerNotification("🟢 Nuevo ítem registrado en Bodega.");
             setShowAddBodegaModal(false);
-            setNewBodegaItem({ nombre: "", sku: "", tipo: "REPUESTO", unidad: "UNIDAD", cantidad: 0, stockMinimo: 0, precioUnitario: 0, precioVenta: 0, ubicacion: "" });
+            setNewBodegaItem({ nombre: "", sku: "", tipo: "REPUESTO", unidad: "UNIDAD", cantidad: "" as any, stockMinimo: "" as any, precioUnitario: "" as any, precioVenta: "" as any, ubicacion: "" });
             await fetchDbData();
           } else {
             triggerNotification(`❌ Error: ${res.error}`);
@@ -387,7 +401,14 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
       } else {
         // Modo Demo
         if (editingBodegaItem) {
-          setInventarioItems(inventarioItems.map(i => i.id === editingBodegaItem.id ? { ...i, ...newBodegaItem } : i));
+                      const payload = {
+              ...newBodegaItem,
+              cantidad: Number(newBodegaItem.cantidad) || 0,
+              stockMinimo: Number(newBodegaItem.stockMinimo) || 0,
+              precioUnitario: Number(newBodegaItem.precioUnitario) || 0,
+              precioVenta: Number(newBodegaItem.precioVenta) || 0
+            };
+            setInventarioItems(inventarioItems.map(i => i.id === editingBodegaItem.id ? { ...i, ...payload } : i));
           triggerNotification("🟢 Ítem editado en Bodega (Demo).");
           setEditingBodegaItem(null);
         } else {
@@ -399,7 +420,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           triggerNotification("🟢 Ítem agregado a Bodega (Demo).");
         }
         setShowAddBodegaModal(false);
-        setNewBodegaItem({ nombre: "", sku: "", tipo: "REPUESTO", unidad: "UNIDAD", cantidad: 0, stockMinimo: 0, precioUnitario: 0, precioVenta: 0, ubicacion: "" });
+        setNewBodegaItem({ nombre: "", sku: "", tipo: "REPUESTO", unidad: "UNIDAD", cantidad: "" as any, stockMinimo: "" as any, precioUnitario: "" as any, precioVenta: "" as any, ubicacion: "" });
       }
     } catch (err: any) {
       triggerNotification(`❌ Error: ${err.message}`);
@@ -1651,7 +1672,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                 <button
                 onClick={() => {
                   setEditingBodegaItem(null);
-                  setNewBodegaItem({ nombre: "", sku: "", tipo: "REPUESTO", unidad: "UNIDAD", cantidad: 0, stockMinimo: 0, precioUnitario: 0, precioVenta: 0, ubicacion: "" });
+                  setNewBodegaItem({ nombre: "", sku: "", tipo: "REPUESTO", unidad: "UNIDAD", cantidad: "" as any, stockMinimo: "" as any, precioUnitario: "" as any, precioVenta: "" as any, ubicacion: "" });
                   setShowAddBodegaModal(true);
                 }}
                 className="h-9 px-4 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/95 flex items-center gap-1.5 transition-all cursor-pointer"
@@ -1777,9 +1798,9 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                                   sku: item.sku || "",
                                   tipo: item.tipo as "REPUESTO" | "INSUMO",
                                   cantidad: item.cantidad,
-                                  stockMinimo: item.stockMinimo || 0,
+                                  stockMinimo: item.stockMinimo ?? ("" as any),
                                   precioUnitario: item.precioUnitario,
-                                  precioVenta: item.precioVenta || 0,
+                                  precioVenta: item.precioVenta ?? ("" as any),
                                   ubicacion: item.ubicacion || "",
                                   unidad: item.unidad || "UNIDAD"
                                 });
@@ -2109,7 +2130,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                     required
                     min={0}
                     value={newBodegaItem.cantidad}
-                    onChange={(e) => setNewBodegaItem({ ...newBodegaItem, cantidad: Number(e.target.value) })}
+                    onChange={(e) => setNewBodegaItem({ ...newBodegaItem, cantidad: e.target.value === "" ? "" : Number(e.target.value) as any })}
                     className="w-full h-8 px-2 rounded-md border border-input bg-background focus:outline-none focus:border-primary"
                   />
                 </div>
@@ -2122,7 +2143,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                     type="number" 
                     min={0}
                     value={newBodegaItem.stockMinimo}
-                    onChange={(e) => setNewBodegaItem({ ...newBodegaItem, stockMinimo: Number(e.target.value) })}
+                    onChange={(e) => setNewBodegaItem({ ...newBodegaItem, stockMinimo: e.target.value === "" ? "" : Number(e.target.value) as any })}
                     className="w-full h-8 px-2 rounded-md border border-input bg-background focus:outline-none focus:border-primary"
                   />
                 </div>
@@ -2133,7 +2154,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                     required
                     min={0}
                     value={newBodegaItem.precioUnitario}
-                    onChange={(e) => setNewBodegaItem({ ...newBodegaItem, precioUnitario: Number(e.target.value) })}
+                    onChange={(e) => setNewBodegaItem({ ...newBodegaItem, precioUnitario: e.target.value === "" ? "" : Number(e.target.value) as any })}
                     className="w-full h-8 px-2 rounded-md border border-input bg-background focus:outline-none focus:border-primary"
                   />
                 </div>
@@ -2143,7 +2164,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                     type="number" 
                     min={0}
                     value={newBodegaItem.precioVenta}
-                    onChange={(e) => setNewBodegaItem({ ...newBodegaItem, precioVenta: Number(e.target.value) })}
+                    onChange={(e) => setNewBodegaItem({ ...newBodegaItem, precioVenta: e.target.value === "" ? "" : Number(e.target.value) as any })}
                     className="w-full h-8 px-2 rounded-md border border-input bg-background focus:outline-none focus:border-primary"
                   />
                 </div>
