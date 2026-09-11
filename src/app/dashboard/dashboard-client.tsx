@@ -181,6 +181,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const [newRoles, setNewRoles] = useState<string[]>([]);
   const [isSavingPermissions, setIsSavingPermissions] = useState(false);
   const [createTrabajoModal, setCreateTrabajoModal] = useState<{otId: string} | null>(null);
+  const [isCreatingTrabajo, setIsCreatingTrabajo] = useState(false);
   const [applyPlantillaModal, setApplyPlantillaModal] = useState<{otId: string} | null>(null);
   const [plantillasDisponibles, setPlantillasDisponibles] = useState<any[]>([]);
   const [tallerConfig, setTallerConfig] = useState<any>(null);
@@ -809,7 +810,8 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   };
 
   const handleCreateTrabajo = async (otId: string, titulo: string, tareas: string[], estimacionMinutos?: number) => {
-    if (!titulo.trim()) return;
+    if (!titulo.trim() || isCreatingTrabajo) return;
+    setIsCreatingTrabajo(true);
     if (!isDemoMode) {
       const res = await createTrabajoOT(otId, titulo, undefined, tareas, estimacionMinutos);
       if (res.success) {
@@ -825,6 +827,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
       setCreateTrabajoModal(null);
       setNewTrabajoData({ titulo: "", estimacionMinutos: 0, tareas: [] });
     }
+    setIsCreatingTrabajo(false);
   };
 
   const handleAssignTrabajo = async (trabajoId: string, tecnicoIdOrName: string) => {
@@ -2897,10 +2900,14 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
               </button>
               <button
                 onClick={() => handleCreateTrabajo(createTrabajoModal.otId, newTrabajoData.titulo, newTrabajoData.tareas.filter(t => t.trim() !== ""), newTrabajoData.estimacionMinutos)}
-                disabled={!newTrabajoData.titulo.trim()}
-                className="h-10 px-4 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!newTrabajoData.titulo.trim() || isCreatingTrabajo}
+                className="h-10 px-4 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed min-w-[120px]"
               >
-                Crear Trabajo
+                {isCreatingTrabajo ? (
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                ) : (
+                  "Crear Trabajo"
+                )}
               </button>
             </div>
           </div>
