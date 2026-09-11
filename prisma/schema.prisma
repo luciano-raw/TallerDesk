@@ -29,13 +29,13 @@ enum StatusOT {
 
 // Entidad que representa a cada taller suscrito al SaaS
 model Taller {
-  id              String   @id @default(uuid())
-  nombre          String
-  slug            String   @unique // Ejemplo: "taller-los-amigos"
-  activo          Boolean  @default(true)
-  plan            String   @default("BASIC") // BASIC, PREMIUM, etc.
-  ubicacion       String? // Dirección/Ubicación del taller
-  
+  id        String  @id @default(uuid())
+  nombre    String
+  slug      String  @unique // Ejemplo: "taller-los-amigos"
+  activo    Boolean @default(true)
+  plan      String  @default("BASIC") // BASIC, PREMIUM, etc.
+  ubicacion String? // Dirección/Ubicación del taller
+
   // Campos para la vista pública / Landing Page
   descripcionPublica String? @db.Text
   horarioAtencion    String?
@@ -231,6 +231,7 @@ model InventarioItem {
 
   movimientos MovimientoInventario[]
   itemsEnOT   ItemPresupuesto[]
+  repuestosOT RepuestoOT[]
 
   @@unique([sku, tallerId])
 }
@@ -255,10 +256,14 @@ model MovimientoInventario {
 // Trabajo específico dentro de una OT asignado a un mecánico
 model TrabajoOT {
   id                String  @id @default(uuid())
-  titulo            String // Ej: "Revisión de frenos"
+  titulo            String // Ej: "Revisin de frenos"
   estado            String  @default("PENDIENTE") // PENDIENTE, EN_PROGRESO, FINALIZADO
   costoManoObra     Decimal @default(0.0)
   estimacionMinutos Int?    @default(0) // Tiempo estimado para completar el trabajo
+
+  esAdicional      Boolean   @default(false)
+  estadoAprobacion String    @default("APROBADO") // PENDIENTE, APROBADO, RECHAZADO
+  fechaAprobacion  DateTime?
 
   ordenTrabajoId String
   ordenTrabajo   OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Cascade)
@@ -266,8 +271,9 @@ model TrabajoOT {
   tecnicoId String?
   tecnico   Usuario? @relation(fields: [tecnicoId], references: [id])
 
-  tareas TareaChecklist[]
-  fotos  FotoOT[]
+  tareas    TareaChecklist[]
+  fotos     FotoOT[]
+  repuestos RepuestoOT[]
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -406,4 +412,17 @@ model PlantillaTrabajo {
 
   plantillaId String
   plantilla   PlantillaServicio @relation(fields: [plantillaId], references: [id], onDelete: Cascade)
+}
+
+// Repuestos asignados especficamente a un TrabajoOT (Cotizacin por Tareas)
+model RepuestoOT {
+  id       String  @id @default(uuid())
+  cantidad Int     @default(1)
+  monto    Decimal @default(0.0) // Precio total de estos repuestos (cantidad x precio unitario)
+
+  trabajoId String
+  trabajo   TrabajoOT @relation(fields: [trabajoId], references: [id], onDelete: Cascade)
+
+  inventarioItemId String?
+  inventarioItem   InventarioItem? @relation(fields: [inventarioItemId], references: [id])
 }

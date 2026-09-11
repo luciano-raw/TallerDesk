@@ -31,7 +31,8 @@ interface ClienteOT {
     id: string;
     detalle: string;
     monto: number;
-    estado: "PENDIENTE" | "APROBADO" | "RECHAZADO";
+    estado: "PENDIENTE_APROBACION" | "APROBADO" | "RECHAZADO";
+    repuestos: {nombre: string; cantidad: number; monto: number}[];
   }[];
   trabajos: {
     titulo: string;
@@ -57,7 +58,8 @@ const initialClienteOT: ClienteOT = {
       id: "ad_1",
       detalle: "Pastillas de freno delanteras desgastadas (bajo el límite de seguridad de 2mm). Requiere cambio inmediato.",
       monto: 35000,
-      estado: "PENDIENTE"
+      estado: "PENDIENTE_APROBACION",
+      repuestos: []
     }
   ],
   trabajos: [
@@ -108,7 +110,8 @@ export default function ClienteSeguimientoPage() {
               id: ta.id,
               detalle: ta.descripcion,
               monto: ta.monto,
-              estado: ta.estadoAprobacion
+              estado: ta.estadoAprobacion,
+              repuestos: ta.repuestos || []
             })) : [],
             trabajos: data.trabajos ? data.trabajos.map((t: any) => ({
               titulo: t.titulo,
@@ -465,7 +468,7 @@ export default function ClienteSeguimientoPage() {
             <span className="font-semibold text-foreground">${ot.costoRepuestos.toLocaleString("es-CL")}</span>
           </div>
           <div className="flex justify-between py-1 text-sm font-bold text-primary pt-1">
-            <span>Costo Total Presupuestado:</span>
+            <span>Costo Total (Base + Adicionales Aprobados):</span>
             <span>${(ot.costoManoObra + ot.costoRepuestos).toLocaleString("es-CL")} CLP</span>
           </div>
         </div>

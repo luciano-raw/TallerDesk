@@ -1302,7 +1302,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                                 className="px-2 py-1 rounded bg-primary text-white text-[10px] font-bold hover:bg-primary/95 cursor-pointer w-full text-center"
                                 title="Gestionar mano de obra, repuestos y presupuestos adicionales"
                               >
-                                Gestionar Valores
+                                Presupuesto y Adicionales
                               </button>
                             )}
                             {(roles.includes("TALLER_ADMIN") || roles.includes("TALLER_JEFE") || roles.includes("TALLER_RECEP") || permisos?.CAN_DELETE_OT) && (
@@ -2205,7 +2205,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           <div className="bg-card border border-border w-full max-w-4xl rounded-2xl p-6 space-y-6 shadow-2xl animate-scale-in max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-border pb-3">
               <div>
-                <h3 className="text-base font-bold">Gestionar Valores y Presupuesto</h3>
+                <h3 className="text-base font-bold">Presupuesto y Adicionales y Presupuesto</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">Orden de Trabajo: <span className="font-bold text-primary">{activeManageCostsOT.codigo}</span> | Vehículo: {activeManageCostsOT.vehiculo}</p>
               </div>
               <button 

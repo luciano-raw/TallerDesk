@@ -649,22 +649,14 @@ export async function getTecnicoOTs(tecnicoId: string) {
             inventarioItem: true
           }
         },
-        trabajos: { include: { tecnico: true, tareas: { orderBy: { tarea: "asc" } } } },
+        trabajos: { include: { tecnico: true, tareas: { orderBy: { tarea: "asc" } }, repuestos: { include: { inventarioItem: true } } } },
         trabajosAdicionales: { orderBy: { createdAt: "desc" } }
       },
       orderBy: { createdAt: "desc" }
     });
-    return ots.map(o => ({
-      ...o,
-      costoManoObra: Number(o.costoManoObra),
-      costoTotal: Number(o.costoTotal),
-      trabajos: o.trabajos,
-      trabajosAdicionales: o.trabajosAdicionales,
-      createdAt: o.createdAt.toISOString(),
-      updatedAt: o.updatedAt.toISOString()
-    }));
+    return JSON.parse(JSON.stringify(ots));
   } catch (error) {
-    console.error("Error al obtener OTs del técnico:", error);
+    console.error("Error getTecnicoOTs:", error);
     return [];
   }
 }
@@ -735,11 +727,38 @@ export async function getOTByToken(token: string) {
         taller: true,
         itemsPresupuesto: true,
         bitacora: { orderBy: { createdAt: "desc" } },
-        trabajos: { include: { tecnico: true, tareas: true } },
+        trabajos: { include: { tecnico: true, tareas: true, repuestos: { include: { inventarioItem: true } } }, orderBy: { createdAt: "desc" } },
         trabajosAdicionales: { orderBy: { createdAt: "desc" } }
       }
     });
     if (!ot) return null;
+    
+    // Convertir trabajos adicionales nuevos al formato esperado temporalmente
+    const adicionalesNuevos = ot.trabajos.filter(t => t.esAdicional).map(t => ({
+       id: t.id,
+       titulo: t.titulo,
+       descripcion: t.tareas?.[0]?.tarea || t.titulo,
+       monto: Number(t.costoManoObra) + t.repuestos.reduce((acc, r) => acc + Number(r.monto), 0),
+       estadoAprobacion: t.estadoAprobacion,
+       createdAt: t.createdAt,
+       repuestos: t.repuestos.map(r => ({
+          nombre: r.inventarioItem?.nombre || 'Repuesto',
+          cantidad: r.cantidad,
+          monto: Number(r.monto)
+       }))
+    }));
+
+    // Combinar con los viejos para compatibilidad
+    const trabajosAdicionalesCombinados = [...adicionalesNuevos, ...ot.trabajosAdicionales.map((ta: any) => ({
+       id: ta.id,
+       titulo: ta.titulo,
+       descripcion: ta.descripcion,
+       monto: Number(ta.monto),
+       estadoAprobacion: ta.estadoAprobacion,
+       createdAt: ta.createdAt,
+       repuestos: []
+    }))];
+
     const resultData = {
       id: ot.id,
       codigo: ot.codigo,
@@ -750,43 +769,17 @@ export async function getOTByToken(token: string) {
       diagnostico: ot.diagnostico || "",
       costoManoObra: Number(ot.costoManoObra),
       costoTotal: Number(ot.costoTotal),
-      presupuestoDetalle: ot.presupuestoDetalle,
-      presupuestoMonto: Number(ot.presupuestoMonto || 0),
-      presupuestoEstado: ot.presupuestoEstado,
-      vehiculo: {
-        patente: ot.vehiculo.patente,
-        marca: ot.vehiculo.marca,
-        modelo: ot.vehiculo.modelo,
-        cliente: {
-          nombre: ot.vehiculo.cliente.nombre
-        }
-      },
-      taller: {
-        nombre: ot.taller.nombre
-      },
-      fotos: ot.fotos.map(f => ({
-        url: f.url,
-        descripcion: f.descripcion || "",
-        fecha: new Date(f.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      })),
-      itemsPresupuesto: ot.itemsPresupuesto.map(i => ({
-        id: i.id,
-        tipo: i.tipo,
-        descripcion: i.descripcion,
-        monto: Number(i.monto)
-      })),
-      bitacora: ot.bitacora.map(b => ({
-        id: b.id,
-        accion: b.accion,
-        usuarioNombre: b.usuarioNombre,
-        createdAt: b.createdAt.toISOString()
-      })),
-      trabajos: ot.trabajos,
-      trabajosAdicionales: ot.trabajosAdicionales
+      vehiculo: ot.vehiculo,
+      fotos: ot.fotos,
+      taller: ot.taller,
+      itemsPresupuesto: ot.itemsPresupuesto,
+      bitacora: ot.bitacora,
+      trabajos: ot.trabajos.filter(t => !t.esAdicional || t.estadoAprobacion === 'APROBADO'),
+      trabajosAdicionales: trabajosAdicionalesCombinados
     };
     return JSON.parse(JSON.stringify(resultData));
   } catch (error) {
-    console.error("Error al obtener OT por token:", error);
+    console.error("Error getOTByToken:", error);
     return null;
   }
 }
@@ -1372,7 +1365,7 @@ export async function deleteRecomendacion(id: string) {
 // NUEVAS ACCIONES: TRABAJOS (MÚLTIPLES MECÁNICOS)
 // =========================================================
 
-export async function createTrabajoOT(ordenTrabajoId: string, titulo: string, tecnicoId?: string, tareas?: string[], estimacionMinutos?: number) {
+export async function createTrabajoOT(ordenTrabajoId: string, titulo: string, tecnicoId?: string, tareas?: string[], estimacionMinutos?: number, costoManoObra?: number, esAdicional?: boolean, estadoAprobacion?: string) {
   try {
     const trabajo = await prisma.trabajoOT.create({
       data: {
@@ -1381,15 +1374,29 @@ export async function createTrabajoOT(ordenTrabajoId: string, titulo: string, te
         estado: "PENDIENTE",
         tecnicoId: tecnicoId || null,
         estimacionMinutos: estimacionMinutos || 0,
+        costoManoObra: costoManoObra || 0,
+        esAdicional: esAdicional || false,
+        estadoAprobacion: estadoAprobacion || "APROBADO",
+        fechaAprobacion: estadoAprobacion == "APROBADO" ? new Date() : null,
         tareas: tareas && tareas.length > 0 ? {
           create: tareas.map(t => ({ tarea: t, ordenTrabajoId }))
         } : undefined
       },
       include: {
         tecnico: true,
-        tareas: true
+        tareas: true,
+        repuestos: { include: { inventarioItem: true } }
       }
     });
+
+    // Update global OT cost if approved
+    if (estadoAprobacion !== "PENDIENTE_APROBACION" && costoManoObra) {
+       await prisma.ordenTrabajo.update({
+         where: { id: ordenTrabajoId },
+         data: { costoTotal: { increment: costoManoObra } }
+       });
+    }
+
     revalidatePath("/dashboard");
     return JSON.parse(JSON.stringify({ success: true, trabajo }));
   } catch (error: any) {
@@ -1397,6 +1404,7 @@ export async function createTrabajoOT(ordenTrabajoId: string, titulo: string, te
     return { success: false, error: error.message };
   }
 }
+
 
 export async function assignTrabajoMecanico(trabajoId: string, tecnicoId: string | null) {
   try {
@@ -1473,20 +1481,30 @@ export async function updateTrabajoEstado(trabajoId: string, estado: "PENDIENTE"
 // NUEVAS ACCIONES: TRABAJOS ADICIONALES Y BODEGA
 // =========================================================
 
-export async function createTrabajoAdicional(ordenTrabajoId: string, titulo: string, descripcion: string, monto: number) {
+export async function createTrabajoAdicional(ordenTrabajoId: string, titulo: string, descripcion: string, monto: number, repuestos: {inventarioItemId: string, cantidad: number}[] = []) {
   try {
-    const adicional = await prisma.trabajoAdicional.create({
+    const trabajo = await prisma.trabajoOT.create({
       data: {
         ordenTrabajoId,
         titulo,
-        descripcion,
-        monto,
-        estadoAprobacion: "PENDIENTE_APROBACION"
+        estado: "PENDIENTE",
+        costoManoObra: monto,
+        esAdicional: true,
+        estadoAprobacion: "PENDIENTE_APROBACION",
+        // Almacenamos la descripción inicial en una tarea para no perderla
+        tareas: {
+          create: [{ tarea: descripcion, ordenTrabajoId }]
+        }
       }
     });
+
+    for (const rep of repuestos) {
+      await asociarRepuestoATrabajo(trabajo.id, rep.inventarioItemId, rep.cantidad);
+    }
+
     revalidatePath("/dashboard");
     revalidatePath("/seguimiento/[token]");
-    return JSON.parse(JSON.stringify({ success: true, adicional }));
+    return JSON.parse(JSON.stringify({ success: true, trabajo }));
   } catch (error: any) {
     console.error("Error createTrabajoAdicional:", error);
     return { success: false, error: error.message };
@@ -1495,64 +1513,50 @@ export async function createTrabajoAdicional(ordenTrabajoId: string, titulo: str
 
 export async function updateTrabajoAdicionalEstado(id: string, estado: "APROBADO" | "RECHAZADO") {
   try {
-    const adicional = await prisma.trabajoAdicional.update({
+    const trabajo = await prisma.trabajoOT.update({
       where: { id },
-      data: { estadoAprobacion: estado }
+      data: { estadoAprobacion: estado, fechaAprobacion: estado === "APROBADO" ? new Date() : null },
+      include: { repuestos: true }
     });
     
-    // Si se aprueba, sumarlo al costoTotal de la OT
-    // Si se aprueba, sumarlo al costoTotal de la OT y crear el TrabajoOT para los mecánicos
     if (estado === "APROBADO") {
-      const otActual = await prisma.ordenTrabajo.findUnique({ where: { id: adicional.ordenTrabajoId }});
+      const otActual = await prisma.ordenTrabajo.findUnique({ where: { id: trabajo.ordenTrabajoId }});
       
+      const totalRepuestos = trabajo.repuestos.reduce((acc, curr) => acc + Number(curr.monto), 0);
+      const montoTotal = Number(trabajo.costoManoObra) + totalRepuestos;
+
       await prisma.ordenTrabajo.update({
-        where: { id: adicional.ordenTrabajoId },
+        where: { id: trabajo.ordenTrabajoId },
         data: {
-          costoTotal: { increment: adicional.monto },
-          // Si estaba en presupuesto o diagnostico, lo pasamos a EN_PROGRESO automáticamente
+          costoTotal: { increment: montoTotal },
           ...(otActual && (otActual.status === "PRESUPUESTADO" || otActual.status === "DIAGNOSTICO" || otActual.status === "INGRESADO") 
               ? { status: "EN_PROGRESO" } : {})
         }
       });
-      
-      // Crear el TrabajoOT para que los mecánicos lo vean en su panel
-      await prisma.trabajoOT.create({
-        data: {
-          titulo: adicional.titulo,
-          ordenTrabajoId: adicional.ordenTrabajoId,
-          estado: "PENDIENTE",
-          costoManoObra: adicional.monto
-        }
-      });
-
-      await logOTAction(adicional.ordenTrabajoId, `Trabajo Adicional Aprobado por el cliente: ${adicional.titulo} ($${adicional.monto}) - Se agregó a la cola de trabajos.`);
+      await logOTAction(trabajo.ordenTrabajoId, `Trabajo Adicional Aprobado por el cliente`);
     } else {
-      await logOTAction(adicional.ordenTrabajoId, `Trabajo Adicional Rechazado: ${adicional.titulo}`);
+      await logOTAction(trabajo.ordenTrabajoId, `Trabajo Adicional Rechazado`);
       
-      // Pasar a recomendaciones pendientes
-      const ot = await prisma.ordenTrabajo.findUnique({
-        where: { id: adicional.ordenTrabajoId },
-        select: { vehiculoId: true }
-      });
-      if (ot && ot.vehiculoId) {
-        await prisma.recomendacion.create({
-          data: {
-            descripcion: `Trabajo rechazado: ${adicional.titulo} ${adicional.descripcion ? `(${adicional.descripcion})` : ""}`,
-            estado: "PENDIENTE",
-            vehiculoId: ot.vehiculoId
-          }
-        });
+      // Liberar stock reservado de los repuestos no aprobados
+      for (const rep of trabajo.repuestos) {
+        if (rep.inventarioItemId) {
+          await prisma.inventarioItem.update({
+            where: { id: rep.inventarioItemId },
+            data: { stockReservado: { decrement: rep.cantidad } }
+          });
+        }
       }
     }
-    
-    revalidatePath("/dashboard");
+
     revalidatePath("/seguimiento/[token]");
-    return JSON.parse(JSON.stringify({ success: true, adicional }));
+    revalidatePath("/dashboard");
+    return JSON.parse(JSON.stringify({ success: true, trabajo }));
   } catch (error: any) {
     console.error("Error updateTrabajoAdicionalEstado:", error);
     return { success: false, error: error.message };
   }
 }
+
 
 export async function asociarBodegaAOT(otId: string, inventarioItemId: string, cantidad: number) {
   try {
@@ -1919,4 +1923,47 @@ export async function getTallerConfig(tallerId: string) {
 import { cookies } from "next/headers";
 export async function setActiveTallerCookie(tallerId: string) {
   (await cookies()).set("tallerdesk_active_taller", tallerId, { maxAge: 60 * 60 * 24 * 30 });
+}
+
+export async function asociarRepuestoATrabajo(trabajoId: string, inventarioItemId: string, cantidad: number) {
+  try {
+    const item = await prisma.inventarioItem.findUnique({ where: { id: inventarioItemId } });
+    if (!item) return { success: false, error: "Item de bodega no encontrado." };
+    if (item.cantidad - item.stockReservado < cantidad) {
+      return { success: false, error: "Stock disponible insuficiente." };
+    }
+
+    const trabajo = await prisma.trabajoOT.findUnique({ where: { id: trabajoId } });
+    if (!trabajo) return { success: false, error: "Trabajo no encontrado." };
+
+    const montoTotal = Number(item.precioVenta) * cantidad;
+
+    // Reservar stock
+    await prisma.inventarioItem.update({
+      where: { id: inventarioItemId },
+      data: { stockReservado: { increment: cantidad } }
+    });
+
+    const repuesto = await prisma.repuestoOT.create({
+      data: {
+        trabajoId,
+        inventarioItemId,
+        cantidad,
+        monto: montoTotal
+      }
+    });
+
+    if (trabajo.estadoAprobacion === "APROBADO") {
+      await prisma.ordenTrabajo.update({
+         where: { id: trabajo.ordenTrabajoId },
+         data: { costoTotal: { increment: montoTotal } }
+      });
+    }
+
+    revalidatePath("/dashboard");
+    return JSON.parse(JSON.stringify({ success: true, repuesto }));
+  } catch (error: any) {
+    console.error("Error asociarRepuestoATrabajo:", error);
+    return { success: false, error: error.message };
+  }
 }

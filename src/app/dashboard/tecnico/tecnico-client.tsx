@@ -61,17 +61,26 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
         const misTrabajos = o.trabajos.filter((t: any) => t.tecnicoId === tecnicoId);
         misTrabajos.forEach((t: any) => {
           
-          const repuestosOT = (o.itemsPresupuesto || []).filter((item: any) => item.tipo === "REPUESTO").map((item: any) => {
-            const match = item.descripcion.match(/^(\d+)x /);
-            const qty = match ? parseInt(match[1], 10) : 1;
-            const desc = match ? item.descripcion.substring(match[0].length) : item.descripcion;
-            return {
-              id: item.id,
-              descripcion: desc,
-              cantidad: qty,
-              inventarioId: item.inventarioItemId
-            };
-          });
+          const repuestosOT = (t.repuestos || []).map((rep: any) => ({
+             id: rep.id,
+             descripcion: rep.inventarioItem?.nombre || 'Repuesto',
+             cantidad: rep.cantidad,
+             inventarioId: rep.inventarioItemId
+          }));
+
+          // Legacy fallback just in case
+          if (repuestosOT.length === 0 && o.itemsPresupuesto) {
+             const legacy = o.itemsPresupuesto.filter((item: any) => item.tipo === "REPUESTO").map((item: any) => {
+                const match = item.descripcion.match(/^(\d+)x /);
+                return {
+                  id: item.id,
+                  descripcion: match ? item.descripcion.substring(match[0].length) : item.descripcion,
+                  cantidad: match ? parseInt(match[1], 10) : 1,
+                  inventarioId: item.inventarioItemId
+                };
+             });
+             repuestosOT.push(...legacy);
+          }
 
           mapped.push({
             id: o.id,
