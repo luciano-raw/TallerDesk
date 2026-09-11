@@ -291,143 +291,129 @@ export async function createOT(data: {
   }
 }
 
-export async function updateOTStatus(id: string, status: "INGRESADO" | "DIAGNOSTICO" | "PRESUPUESTADO" | "EN_PROGRESO" | "CONTROL_CALIDAD" | "LISTO_ENTREGA" | "ENTREGADO" | "ANULADO") {
+export async function updateOTStatus(id: string, status: "INGRESADO" | "DIAGNOSTICO" | "PRESUPUESTADO" | "EN_PROGRESO" | "CONTROL_CALIDAD" | "LISTO_ENTREGA" | "ENTREGADO" | "CERRADO" | "ANULADO") {
   try {
     const otPrev = await prisma.ordenTrabajo.findUnique({ where: { id } });
     if (!otPrev) return { success: false, error: "OT no encontrada" };
     
-    const wasFinalState = otPrev.status === "ENTREGADO" || otPrev.status === "LISTO_ENTREGA";
-    const isFinalState = status === "ENTREGADO" || status === "LISTO_ENTREGA";
+    const wasFinalState = otPrev.status === "CERRADO";
+    const isFinalState = status === "CERRADO";
     const wasAnulado = otPrev.status === "ANULADO";
     const isAnulado = status === "ANULADO";
 
     const ot = await prisma.ordenTrabajo.update({
       where: { id },
       data: { status },
-      include: { itemsPresupuesto: { include: { inventarioItem: true } } }
+      include: { 
+        itemsPresupuesto: { include: { inventarioItem: true } },
+        trabajos: { include: { repuestos: { include: { inventarioItem: true } } } }
+      }
     });
-    await logOTAction(id, `Estado cambiado de la orden a: ${status}`);
+    await logOTAction(id, `Estado cambiado de la orden a: `);
     
-    // Descontar inventario al entrar a estado final desde un estado NO final
-    if (!wasFinalState && isFinalState) {
-      for (const item of ot.itemsPresupuesto) {
-        if (item.tipo === "REPUESTO" && item.inventarioItemId && item.inventarioItem) {
-          const match = item.descripcion.match(/^(\d+)x /);
-          const cantidad = match ? parseInt(match[1], 10) : 1;
-          
-          await prisma.inventarioItem.update({
-            where: { id: item.inventarioItemId },
-            data: { 
-              cantidad: { decrement: cantidad },
-              stockReservado: { decrement: cantidad }
-            }
-          });
-
-          await prisma.movimientoInventario.create({
-            data: {
-              tipo: "CONSUMO",
-              cantidad: cantidad,
-              costoUnitario: item.inventarioItem.precioUnitario,
-              referencia: ot.codigo,
-              inventarioItemId: item.inventarioItemId
-            }
-          });
-        }
-      }
-    }
-    // Revertir consumo al salir de un estado final a un estado NO final (y no anulado)
-    else if (wasFinalState && !isFinalState && !isAnulado) {
-      for (const item of ot.itemsPresupuesto) {
-        if (item.tipo === "REPUESTO" && item.inventarioItemId && item.inventarioItem) {
-          const match = item.descripcion.match(/^(\d+)x /);
-          const cantidad = match ? parseInt(match[1], 10) : 1;
-          
-          await prisma.inventarioItem.update({
-            where: { id: item.inventarioItemId },
-            data: { 
-              cantidad: { increment: cantidad },
-              stockReservado: { increment: cantidad }
-            }
-          });
-
-          await prisma.movimientoInventario.create({
-            data: {
-              tipo: "RESERVA", // Vuelve a estar reservado pero reponemos el físico
-              cantidad: cantidad,
-              costoUnitario: item.inventarioItem.precioUnitario,
-              referencia: ot.codigo + " (REVERSO CONSUMO)",
-              inventarioItemId: item.inventarioItemId
-            }
-          });
-        }
+    const allRepuestos: {inventarioItemId: string, cantidad: number, precio: any}[] = [];
+    
+    // Legacy
+    for (const item of ot.itemsPresupuesto) {
+      if (item.tipo === "REPUESTO" && item.inventarioItemId && item.inventarioItem) {
+        const match = item.descripcion.match(/^(\d+)x /);
+        const cantidad = match ? parseInt(match[1], 10) : 1;
+        allRepuestos.push({ inventarioItemId: item.inventarioItemId, cantidad, precio: item.inventarioItem.precioUnitario });
       }
     }
     
-    // Manejo de ANULADO
-    if (!wasAnulado && isAnulado) {
-      for (const item of ot.itemsPresupuesto) {
-        if (item.tipo === "REPUESTO" && item.inventarioItemId && item.inventarioItem) {
-          const match = item.descripcion.match(/^(\d+)x /);
-          const cantidad = match ? parseInt(match[1], 10) : 1;
-          
-          if (wasFinalState) {
-            // Si estaba finalizado y se anula, se repone el stock físico pero NO se reserva
-            await prisma.inventarioItem.update({
-              where: { id: item.inventarioItemId },
-              data: { cantidad: { increment: cantidad } }
-            });
-            await prisma.movimientoInventario.create({
-              data: { tipo: "INGRESO", cantidad, costoUnitario: item.inventarioItem.precioUnitario, referencia: ot.codigo + " (ANULADO)", inventarioItemId: item.inventarioItemId }
-            });
-          } else {
-            // Si estaba en progreso y se anula, solo se quita la reserva
-            await prisma.inventarioItem.update({
-              where: { id: item.inventarioItemId },
-              data: { stockReservado: { decrement: cantidad } }
-            });
+    // Task-Based
+    for (const t of ot.trabajos) {
+      if (t.estadoAprobacion === "APROBADO") {
+        for (const rep of t.repuestos) {
+          if (rep.inventarioItemId && rep.inventarioItem) {
+            allRepuestos.push({ inventarioItemId: rep.inventarioItemId, cantidad: rep.cantidad, precio: rep.inventarioItem.precioUnitario });
           }
+        }
+      }
+    }
+    
+    if (!wasFinalState && isFinalState) {
+      for (const item of allRepuestos) {
+        await prisma.inventarioItem.update({
+          where: { id: item.inventarioItemId },
+          data: { 
+            cantidad: { decrement: item.cantidad },
+            stockReservado: { decrement: item.cantidad }
+          }
+        });
+
+        await prisma.movimientoInventario.create({
+          data: {
+            tipo: "CONSUMO",
+            cantidad: item.cantidad,
+            costoUnitario: item.precio,
+            referencia: ot.codigo + " (CERRADA)",
+            inventarioItemId: item.inventarioItemId
+          }
+        });
+      }
+    }
+    else if (wasFinalState && !isFinalState && !isAnulado) {
+      for (const item of allRepuestos) {
+        await prisma.inventarioItem.update({
+          where: { id: item.inventarioItemId },
+          data: { 
+            cantidad: { increment: item.cantidad },
+            stockReservado: { increment: item.cantidad }
+          }
+        });
+
+        await prisma.movimientoInventario.create({
+          data: {
+            tipo: "RESERVA",
+            cantidad: item.cantidad,
+            costoUnitario: item.precio,
+            referencia: ot.codigo + " (REVERSO CERRADA)",
+            inventarioItemId: item.inventarioItemId
+          }
+        });
+      }
+    }
+    
+    if (!wasAnulado && isAnulado) {
+      for (const item of allRepuestos) {
+        if (wasFinalState) {
+          await prisma.inventarioItem.update({
+            where: { id: item.inventarioItemId },
+            data: { cantidad: { increment: item.cantidad } }
+          });
+          await prisma.movimientoInventario.create({
+            data: { tipo: "INGRESO", cantidad: item.cantidad, costoUnitario: item.precio, referencia: ot.codigo + " (ANULADO)", inventarioItemId: item.inventarioItemId }
+          });
+        } else {
+          await prisma.inventarioItem.update({
+            where: { id: item.inventarioItemId },
+            data: { stockReservado: { decrement: item.cantidad } }
+          });
         }
       }
     } else if (wasAnulado && !isAnulado) {
-      for (const item of ot.itemsPresupuesto) {
-        if (item.tipo === "REPUESTO" && item.inventarioItemId && item.inventarioItem) {
-          const match = item.descripcion.match(/^(\d+)x /);
-          const cantidad = match ? parseInt(match[1], 10) : 1;
-          
-          if (isFinalState) {
-            // De anulado directo a finalizado, descuenta stock físico (raro pero posible)
-            await prisma.inventarioItem.update({
+      for (const item of allRepuestos) {
+        if (isFinalState) {
+           await prisma.inventarioItem.update({
               where: { id: item.inventarioItemId },
-              data: { cantidad: { decrement: cantidad } }
-            });
-            await prisma.movimientoInventario.create({
-              data: { tipo: "CONSUMO", cantidad, costoUnitario: item.inventarioItem.precioUnitario, referencia: ot.codigo + " (RECUPERADO)", inventarioItemId: item.inventarioItemId }
-            });
-          } else {
-            // Vuelve a estar reservado
-            await prisma.inventarioItem.update({
+              data: { cantidad: { decrement: item.cantidad } }
+           });
+        } else {
+           await prisma.inventarioItem.update({
               where: { id: item.inventarioItemId },
-              data: { stockReservado: { increment: cantidad } }
-            });
-          }
+              data: { stockReservado: { increment: item.cantidad } }
+           });
         }
       }
     }
 
     revalidatePath("/dashboard");
-    return JSON.parse(JSON.stringify({
-      success: true,
-      ot: {
-        id: ot.id,
-        codigo: ot.codigo,
-        status: ot.status,
-        tokenSeguro: ot.tokenSeguro,
-        costoManoObra: Number(ot.costoManoObra),
-        costoTotal: Number(ot.costoTotal)
-      }
-    }));
+    revalidatePath("/seguimiento/[token]");
+    return JSON.parse(JSON.stringify({ success: true }));
   } catch (error: any) {
-    console.error("Error al actualizar estado de OT:", error);
+    console.error("Error updateOTStatus:", error);
     return { success: false, error: error.message };
   }
 }

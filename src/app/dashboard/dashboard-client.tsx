@@ -71,7 +71,7 @@ interface OT {
   patente: string;
   vehiculo: string;
   cliente: string;
-  status: "INGRESADO" | "DIAGNOSTICO" | "PRESUPUESTADO" | "EN_PROGRESO" | "CONTROL_CALIDAD" | "LISTO_ENTREGA" | "ENTREGADO" | "ANULADO";
+  status: "INGRESADO" | "DIAGNOSTICO" | "PRESUPUESTADO" | "EN_PROGRESO" | "CONTROL_CALIDAD" | "LISTO_ENTREGA" | "ENTREGADO" | "CERRADO" | "ANULADO";
   tecnico: string;
   tecnicoId?: string;
   costoManoObra: number;
@@ -183,6 +183,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const [isSavingPermissions, setIsSavingPermissions] = useState(false);
   const [createTrabajoModal, setCreateTrabajoModal] = useState<{otId: string} | null>(null);
   const [isCreatingTrabajo, setIsCreatingTrabajo] = useState(false);
+  const [confirmCloseModal, setConfirmCloseModal] = useState<{id: string, status: string} | null>(null);
   const [applyPlantillaModal, setApplyPlantillaModal] = useState<{otId: string} | null>(null);
   const [plantillasDisponibles, setPlantillasDisponibles] = useState<any[]>([]);
   const [tallerConfig, setTallerConfig] = useState<any>(null);
@@ -773,20 +774,29 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   };
 
   const handleUpdateStatus = async (id: string, newStatus: OT["status"]) => {
+    if (newStatus === "CERRADO" as any) {
+      setConfirmCloseModal({ id, status: newStatus });
+      return;
+    }
+    await executeStatusUpdate(id, newStatus);
+  };
+
+  const executeStatusUpdate = async (id: string, newStatus: string) => {
     if (!isDemoMode) {
-      const res = await updateOTStatus(id, newStatus);
+      const res = await updateOTStatus(id, newStatus as any);
       if (res.success) {
         triggerNotification(`Estado de OT actualizado a ${newStatus} en Supabase.`);
         fetchDbData();
+        setConfirmCloseModal(null);
       }
     } else {
       setOts(ots.map(o => {
         if (o.id === id) {
-          triggerNotification(`Orden ${o.codigo} cambiada a ${newStatus}.`);
-          return { ...o, status: newStatus };
+          return { ...o, status: newStatus as any };
         }
         return o;
       }));
+      setConfirmCloseModal(null);
     }
   };
 
@@ -1110,7 +1120,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
           <div className="bg-card border border-border p-4 rounded-xl">
             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">Autos en Taller</p>
             <div className="flex items-center justify-between">
-              <p className="text-2xl font-black">{ots.filter(o => o.status !== "ENTREGADO" && o.status !== "ANULADO").length}</p>
+              <p className="text-2xl font-black">{ots.filter(o => o.status !== "CERRADO" && o.status !== "ANULADO").length}</p>
               <Car size={20} className="text-primary" />
             </div>
           </div>
@@ -1283,6 +1293,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                           <option value="CONTROL_CALIDAD">CONTROL CALIDAD</option>
                           <option value="LISTO_ENTREGA">LISTO ENTREGA</option>
                           <option value="ENTREGADO">ENTREGADO</option>
+                          <option value="CERRADO">CERRADO (ARCHIVAR)</option>
                           <option value="ANULADO">ANULADO</option>
                         </select>
                       </td>
@@ -1964,7 +1975,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                             className="w-full h-7 px-1.5 rounded border border-border bg-background text-[10px] focus:outline-none focus:border-primary"
                           >
                             <option value="">Selecciona OT...</option>
-                            {ots.filter(o => o.status !== "ENTREGADO" && o.status !== "ANULADO").map(o => (
+                            {ots.filter(o => o.status !== "CERRADO" && o.status !== "ANULADO").map(o => (
                               <option key={o.id} value={o.id}>{o.codigo} ({o.vehiculo})</option>
                             ))}
                           </select>
