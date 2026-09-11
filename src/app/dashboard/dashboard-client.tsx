@@ -146,6 +146,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const [newCostItemMonto, setNewCostItemMonto] = useState("");
   const [newAdicionalDetalle, setNewAdicionalDetalle] = useState("");
   const [newAdicionalMonto, setNewAdicionalMonto] = useState("");
+  const [newAdicionalRepuestos, setNewAdicionalRepuestos] = useState<{inventarioItemId: string, cantidad: number, nombre: string}[]>([]);
 
   // --- Estados de Bodega ---
   const [inventarioItems, setInventarioItems] = useState<any[]>([]);
