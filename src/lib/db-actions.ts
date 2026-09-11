@@ -1967,3 +1967,64 @@ export async function asociarRepuestoATrabajo(trabajoId: string, inventarioItemI
     return { success: false, error: error.message };
   }
 }
+
+export async function deleteTrabajoOT(id: string) {
+  try {
+    const trabajo = await prisma.trabajoOT.findUnique({
+      where: { id },
+      include: { repuestos: true }
+    });
+
+    if (!trabajo) return { success: false, error: "Trabajo no encontrado" };
+
+    // Liberar stock reservado si hay repuestos
+    for (const rep of trabajo.repuestos) {
+      if (rep.inventarioItemId) {
+        await prisma.inventarioItem.update({
+          where: { id: rep.inventarioItemId },
+          data: { stockReservado: { decrement: rep.cantidad } }
+        });
+      }
+    }
+
+    // Restar del costo total si estaba aprobado
+    if (trabajo.estadoAprobacion === "APROBADO") {
+      const montoTotalRepuestos = trabajo.repuestos.reduce((acc, r) => acc + Number(r.monto), 0);
+      const costoRestar = Number(trabajo.costoManoObra) + montoTotalRepuestos;
+      
+      if (costoRestar > 0) {
+        await prisma.ordenTrabajo.update({
+          where: { id: trabajo.ordenTrabajoId },
+          data: { costoTotal: { decrement: costoRestar } }
+        });
+      }
+    }
+
+    await prisma.trabajoOT.delete({
+      where: { id }
+    });
+
+    // Check if the OT can advance now that a blocking task was removed
+    const ot = await prisma.ordenTrabajo.findUnique({
+       where: { id: trabajo.ordenTrabajoId },
+       include: { trabajos: true }
+    });
+
+    if (ot && ot.status === "EN_PROGRESO") {
+        const allFinished = ot.trabajos.every(t => t.estado === "FINALIZADO");
+        if (allFinished && ot.trabajos.length > 0) {
+           await prisma.ordenTrabajo.update({
+              where: { id: ot.id },
+              data: { status: "CONTROL_CALIDAD" }
+           });
+        }
+    }
+
+    revalidatePath("/dashboard");
+    revalidatePath("/seguimiento/[token]");
+    return JSON.parse(JSON.stringify({ success: true }));
+  } catch (error: any) {
+    console.error("Error deleteTrabajoOT:", error);
+    return { success: false, error: error.message };
+  }
+}

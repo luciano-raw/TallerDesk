@@ -52,6 +52,7 @@ import {
   createTrabajoAdicional,
   updateTrabajoAdicionalEstado,
   asociarBodegaAOT,
+  deleteTrabajoOT,
   getPlantillasServicio,
   applyPlantillaToOT,
   getTallerConfig,
@@ -830,6 +831,18 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
     setIsCreatingTrabajo(false);
   };
 
+  const handleDeleteTrabajo = async (trabajoId: string) => {
+    if (confirm("¿Estás seguro de eliminar este trabajo? Se removerá del flujo de la OT y liberará repuestos reservados.")) {
+       const res = await deleteTrabajoOT(trabajoId);
+       if (res.success) {
+         triggerNotification("Trabajo eliminado correctamente.");
+         fetchDbData();
+       } else {
+         triggerNotification("Error: " + res.error);
+       }
+    }
+  };
+
   const handleAssignTrabajo = async (trabajoId: string, tecnicoIdOrName: string) => {
     if (!isDemoMode) {
       const actualId = tecnicoIdOrName === "Sin Asignar" ? null : tecnicoIdOrName;
@@ -1219,6 +1232,13 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                                     Finalizado
                                   </span>
                                 )}
+                                <button
+                                  onClick={() => handleDeleteTrabajo(t.id)}
+                                  className="text-red-500 hover:text-red-700 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity ml-1"
+                                  title="Eliminar Trabajo"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                </button>
                               </div>
                             ))}
                             <div className="flex flex-col items-start gap-1 mt-1">
