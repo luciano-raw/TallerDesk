@@ -1,4 +1,5 @@
 "use client";
+import EvidenciaUploader from "@/components/EvidenciaUploader";
 
 import React, { useState, useEffect } from "react";
 import { useSystemAuth } from "@/components/auth-wrapper";
@@ -2523,6 +2524,17 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                       </p>
                     </div>
                   )}
+
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <EvidenciaUploader 
+                      ordenTrabajoId={selectedDetailOT.id} 
+                      esRecepcion={true} 
+                      onUploadSuccess={(url) => {
+                         triggerNotification("Foto de recepcin subida con xito");
+                      }} 
+                      label="Subir Foto de Recepcin" 
+                    />
+                  </div>
                 </div>
 
                 {/* 2. Checklist Avance */}

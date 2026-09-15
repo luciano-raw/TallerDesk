@@ -1,4 +1,5 @@
 "use client";
+import EvidenciaUploader from "@/components/EvidenciaUploader";
 import React, { useState, useEffect } from "react";
 import { useSystemAuth } from "@/components/auth-wrapper";
 import { UserButton } from "@/components/auth-wrapper";
@@ -234,7 +235,7 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
     }
   };
 
-  const handleSimulatePhoto = async (otId: string) => {
+  const handleSimulatePhoto = async (otId: string) => { return; /* dummy removed */
     const urls = [
       "https://images.unsplash.com/photo-1517524206127-48bbd363f3d7?q=80&w=300",
       "https://images.unsplash.com/photo-1507136566006-cfc505b114fc?q=80&w=300",
@@ -484,15 +485,16 @@ export default function TecnicoClient({ initialDbUser }: { initialDbUser?: any }
             )}
 
             <div className="grid grid-cols-2 gap-3 pt-2">
-              <button
-                  onClick={() => handleSimulatePhoto(activeOT.trabajoId)}
-                  className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-background border border-border shadow-sm hover:border-primary/50 transition-colors"
-                >
-                  <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
-                    <Camera size={20} />
-                  </div>
-                  <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">Tomar Foto</span>
-              </button>
+              
+              <EvidenciaUploader 
+                ordenTrabajoId={activeOT.id}
+                trabajoId={activeOT.trabajoId}
+                onUploadSuccess={(url) => {
+                  triggerNotification("Evidencia guardada exitosamente");
+                  loadDbOTs();
+                }}
+                label="Subir Evidencia"
+              />
               
               <Link
                 href={`/dashboard/directorio?search=${activeOT.patente}`}
