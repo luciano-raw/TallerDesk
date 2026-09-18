@@ -34,6 +34,7 @@ model Taller {
   nombre    String
   slug      String  @unique // Ejemplo: "taller-los-amigos"
   activo    Boolean @default(true)
+  estadoSuscripcion String @default("ACTIVO")
   plan      String  @default("BASIC") // BASIC, PREMIUM, etc.
   ubicacion String? // Dirección/Ubicación del taller
 
@@ -426,4 +427,14 @@ model RepuestoOT {
 
   inventarioItemId String?
   inventarioItem   InventarioItem? @relation(fields: [inventarioItemId], references: [id])
+}
+
+model SolicitudRegistro {
+  id           String   @id @default(uuid())
+  nombre       String
+  email        String
+  nombreTaller String
+  telefono     String?
+  estado       String   @default("PENDIENTE")
+  createdAt    DateTime @default(now())
 }

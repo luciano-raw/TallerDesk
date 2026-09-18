@@ -94,7 +94,7 @@ export async function syncUser() {
         });
       }
 
-      return { ...selectedUser, _talleresCount: dbUsers.filter(u => u.tallerId).length } as any;
+      return { ...selectedUser, tallerStatus: selectedUser.taller?.estadoSuscripcion || "ACTIVO", _talleresCount: dbUsers.filter(u => u.tallerId).length } as any;
     }
 
     // 5. Si tiene varios talleres y no hay cookie, forzamos selección

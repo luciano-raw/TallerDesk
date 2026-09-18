@@ -22,7 +22,7 @@ import {
   toggleTallerActivo, 
   updateTallerPlan, 
   getUsuarios, 
-  updateUserRoleAndTaller 
+  updateUserRoleAndTaller, updateTallerSubscription, deleteTaller, preRegistrarUsuario 
 } from "@/lib/db-actions";
 
 interface TallerInfo {
@@ -31,6 +31,7 @@ interface TallerInfo {
   slug: string;
   plan: string;
   activo: boolean;
+  estadoSuscripcion?: string;
   usuarios: number;
   ots: number;
   fechaCreacion: string;
@@ -52,7 +53,7 @@ const mockTalleres: TallerInfo[] = [
     nombre: "Taller Los Amigos",
     slug: "taller-los-amigos",
     plan: "BASIC",
-    activo: true,
+    activo: true, estadoSuscripcion: "ACTIVO",
     usuarios: 4,
     ots: 48,
     fechaCreacion: "2026-03-12"
@@ -62,7 +63,7 @@ const mockTalleres: TallerInfo[] = [
     nombre: "Elite Detailing Studio",
     slug: "elite-detailing",
     plan: "PREMIUM",
-    activo: true,
+    activo: true, estadoSuscripcion: "ACTIVO",
     usuarios: 8,
     ots: 112,
     fechaCreacion: "2026-04-05"
@@ -105,7 +106,12 @@ export default function SuperAdminClient() {
   const [usuarios, setUsuarios] = useState<UsuarioInfo[]>(mockUsuarios);
   
   const [activeTab, setActiveTab] = useState<"talleres" | "usuarios">("talleres");
+
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDeleteTallerModal, setShowDeleteTallerModal] = useState<string | null>(null);
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [newUser, setNewUser] = useState({ email: "", nombre: "", role: "TALLER_ADMIN", tallerId: "" });
+
   const [newTaller, setNewTaller] = useState({ nombre: "", slug: "", plan: "BASIC", ubicacion: "", maxTrabajadores: "5" });
   const [notification, setNotification] = useState<string | null>(null);
 
@@ -126,6 +132,7 @@ export default function SuperAdminClient() {
       slug: t.slug,
       plan: t.plan,
       activo: t.activo,
+      estadoSuscripcion: t.estadoSuscripcion,
       usuarios: t.usuarios?.length || 0,
       ots: t.ots?.length || 0,
       fechaCreacion: new Date(t.createdAt).toISOString().split("T")[0]
@@ -172,7 +179,48 @@ export default function SuperAdminClient() {
 
   // --- HANDLERS PARA TALLERES ---
 
-  const handleToggleActivo = async (id: string) => {
+
+  const handleToggleActivo = async (id: string, currentState: string) => {
+    const newState = currentState === "ACTIVO" ? "PAUSADO" : "ACTIVO";
+    if (!isDemoMode) {
+      const res = await updateTallerSubscription(id, newState);
+      if (res.success) {
+        triggerNotification(`Suscripcin cambiada a `);
+        loadDbData();
+      }
+    } else {
+      triggerNotification("Suscripcin cambiada (Demo)");
+    }
+  };
+
+  const handleDeleteTaller = async (id: string) => {
+    if (!isDemoMode) {
+      const res = await deleteTaller(id);
+      if (res.success) {
+        triggerNotification("Taller eliminado correctamente");
+        loadDbData();
+      }
+    }
+    setShowDeleteTallerModal(null);
+  };
+  
+  const handlePreRegisterUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUser.email || !newUser.nombre || !newUser.tallerId) return;
+    
+    if (!isDemoMode) {
+      const res = await preRegistrarUsuario(newUser.email, newUser.nombre, newUser.tallerId, newUser.role);
+      if (res.success) {
+        triggerNotification("Usuario pre-registrado correctamente");
+        loadDbData();
+        setShowCreateUserModal(false);
+      } else {
+        triggerNotification("Error: " + res.error);
+      }
+    }
+  };
+
+  const OLD_handleToggleActivo = async (id: string) => {
     if (!isDemoMode) {
       const res = await toggleTallerActivo(id);
       if (res.success) {
@@ -235,7 +283,7 @@ export default function SuperAdminClient() {
         nombre: newTaller.nombre,
         slug: slugFormatted,
         plan: newTaller.plan,
-        activo: true,
+        activo: true, estadoSuscripcion: "ACTIVO",
         usuarios: 1,
         ots: 0,
         fechaCreacion: new Date().toISOString().split("T")[0]
@@ -350,13 +398,24 @@ export default function SuperAdminClient() {
           </a>
         </div>
 
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/95 transition-all shadow-md shadow-primary/10 self-start"
-        >
-          <Plus size={16} />
-          Crear Nuevo Taller
-        </button>
+        
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowCreateUserModal(true)}
+            className="flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-secondary text-secondary-foreground text-xs font-bold hover:bg-secondary/80 transition-all shadow-md self-start"
+          >
+            <UserPlus size={16} />
+            Pre-Registrar Usuario
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/95 transition-all shadow-md shadow-primary/10 self-start"
+          >
+            <Plus size={16} />
+            Crear Nuevo Taller
+          </button>
+        </div>
+
       </div>
 
       {/* METRICAS GENERALES */}
@@ -453,21 +512,29 @@ export default function SuperAdminClient() {
                           ? "bg-success/15 text-success" 
                           : "bg-destructive/15 text-destructive"
                       }`}>
-                        {t.activo ? "Activo" : "Suspendido"}
+                        {t.estadoSuscripcion || (t.activo ? "ACTIVO" : "SUSPENDIDO")}
                       </span>
                     </td>
                     <td className="p-4 text-right">
                       <button
-                        onClick={() => handleToggleActivo(t.id)}
+                        onClick={() => handleToggleActivo(t.id, t.estadoSuscripcion || "ACTIVO")}
                         className={`p-1.5 rounded-md border transition-colors inline-flex items-center justify-center ${
                           t.activo 
                             ? "border-destructive/30 text-destructive hover:bg-destructive/10" 
                             : "border-success/30 text-success hover:bg-success/10"
                         }`}
-                        title={t.activo ? "Suspender Taller" : "Habilitar Taller"}
+                        title={t.estadoSuscripcion === "ACTIVO" ? "Pausar Suscripcin" : "Reanudar Suscripcin"}
                       >
                         <Power size={13} />
                       </button>
+                      <button
+                        onClick={() => setShowDeleteTallerModal(t.id)}
+                        className="p-1.5 rounded-md border transition-colors inline-flex items-center justify-center border-destructive/30 text-destructive hover:bg-destructive/10 ml-2"
+                        title="Eliminar Taller"
+                      >
+                        <X size={13} />
+                      </button>
+
                     </td>
                   </tr>
                 ))}
@@ -556,6 +623,63 @@ export default function SuperAdminClient() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      
+      {showDeleteTallerModal && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border p-6 rounded-2xl max-w-sm w-full">
+            <h3 className="font-bold text-lg mb-2 text-destructive flex items-center gap-2">
+              <ShieldAlert size={20} />
+              Cuidado
+            </h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              Ests a punto de eliminar este taller y TODOS sus datos (Usuarios, vehculos, OTs). Esta accin NO se puede deshacer.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowDeleteTallerModal(null)} className="flex-1 bg-muted p-2 rounded text-sm font-semibold">Cancelar</button>
+              <button onClick={() => handleDeleteTaller(showDeleteTallerModal)} className="flex-1 bg-destructive text-white p-2 rounded text-sm font-bold">ELIMINAR</button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {showCreateUserModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-md p-6 shadow-2xl">
+            <div className="flex justify-between border-b border-border pb-3 mb-4">
+              <h3 className="font-bold text-base">Pre-Registrar Usuario</h3>
+              <button onClick={() => setShowCreateUserModal(false)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handlePreRegisterUser} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold mb-1">Correo Electrnico</label>
+                <input type="email" required className="w-full h-10 px-3 border border-input rounded bg-background" value={newUser.email} onChange={(e) => setNewUser({...newUser, email: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1">Nombre</label>
+                <input type="text" required className="w-full h-10 px-3 border border-input rounded bg-background" value={newUser.nombre} onChange={(e) => setNewUser({...newUser, nombre: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1">Rol Inicial</label>
+                <select className="w-full h-10 px-3 border border-input rounded bg-background" value={newUser.role} onChange={(e) => setNewUser({...newUser, role: e.target.value})}>
+                   <option value="TALLER_ADMIN">TALLER_ADMIN</option>
+                   <option value="TALLER_RECEP">TALLER_RECEP</option>
+                   <option value="TALLER_JEFE">TALLER_JEFE</option>
+                   <option value="TALLER_TECNICO">TALLER_TECNICO</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1">Taller Asignado</label>
+                <select required className="w-full h-10 px-3 border border-input rounded bg-background" value={newUser.tallerId} onChange={(e) => setNewUser({...newUser, tallerId: e.target.value})}>
+                   <option value="" disabled>Seleccione un taller...</option>
+                   {talleres.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                </select>
+              </div>
+              <button type="submit" className="w-full h-10 bg-primary text-white rounded font-bold mt-4">Registrar</button>
+            </form>
           </div>
         </div>
       )}

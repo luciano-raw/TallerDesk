@@ -2014,3 +2014,46 @@ export async function deleteTrabajoOT(id: string) {
     return { success: false, error: error.message };
   }
 }
+
+export async function updateTallerSubscription(id: string, estadoSuscripcion: string) {
+  try {
+    const t = await prisma.taller.update({
+      where: { id },
+      data: { estadoSuscripcion, activo: estadoSuscripcion === 'ACTIVO' }
+    });
+    revalidatePath('/super-admin');
+    return { success: true, data: t };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function deleteTaller(id: string) {
+  try {
+    await prisma.taller.delete({ where: { id } });
+    revalidatePath('/super-admin');
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function preRegistrarUsuario(email: string, nombre: string, tallerId: string, role: string) {
+  try {
+    const existing = await prisma.usuario.findFirst({ where: { email } });
+    if (existing) return { success: false, error: 'Correo ya registrado' };
+
+    const u = await prisma.usuario.create({
+      data: {
+        email,
+        nombre,
+        roles: [role as any],
+        tallerId
+      }
+    });
+    revalidatePath('/super-admin');
+    return { success: true, data: u };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
