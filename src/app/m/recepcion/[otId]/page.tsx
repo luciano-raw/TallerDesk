@@ -11,7 +11,7 @@ export default async function MobileReceptionPage({ params }: { params: Promise<
     return (
       <div className="p-8 text-center mt-20">
         <h1 className="text-xl font-bold text-red-500 mb-2">Error 404: OT no encontrada</h1>
-        <p className="text-sm text-gray-500">ID Recibido en URL: {params.otId}</p>
+        <p className="text-sm text-gray-500">ID Recibido en URL: {otId}</p>
       </div>
     );
   }
