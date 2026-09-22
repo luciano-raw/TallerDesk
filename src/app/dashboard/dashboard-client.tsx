@@ -1,5 +1,5 @@
-import { QRCodeSVG } from 'qrcode.react';
 "use client";
+import { QRCodeSVG } from 'qrcode.react';
 import EvidenciaUploader from "@/components/EvidenciaUploader";
 
 import React, { useState, useEffect } from "react";
