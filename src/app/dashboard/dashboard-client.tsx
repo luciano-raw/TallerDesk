@@ -1,3 +1,4 @@
+import { QRCodeSVG } from 'qrcode.react';
 "use client";
 import EvidenciaUploader from "@/components/EvidenciaUploader";
 
@@ -2975,6 +2976,44 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
       {activeTab === "perfil" && (
         <div className="pt-6">
           <PerfilView config={tallerConfig} onUpdate={fetchDbData} />
+        </div>
+      )}
+
+      {/* MODAL QR PARA RECEPCIÓN DE FOTOS */}
+      {showQRModal && selectedDetailOT && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-background rounded-2xl p-6 w-full max-w-sm flex flex-col items-center relative shadow-2xl">
+            <button 
+              onClick={() => setShowQRModal(false)}
+              className="absolute top-4 right-4 text-muted-foreground hover:bg-muted p-2 rounded-full transition-colors"
+            >
+              <X size={20} />
+            </button>
+            
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
+              <Smartphone size={24} />
+            </div>
+            
+            <h3 className="text-xl font-bold mb-2 text-center">Escanear con Celular</h3>
+            <p className="text-sm text-muted-foreground text-center mb-6">
+              Usa la cámara de tu celular para abrir este enlace y subir las fotos rápidamente desde allí.
+            </p>
+            
+            <div className="bg-white p-4 rounded-xl shadow-inner border border-gray-100 mb-6 flex justify-center w-full">
+              <QRCodeSVG 
+                value={`${qrOrigin}/m/recepcion/${selectedDetailOT.id}`}
+                size={200}
+                bgColor={"#ffffff"}
+                fgColor={"#000000"}
+                level={"H"}
+                includeMargin={false}
+              />
+            </div>
+            
+            <p className="text-xs font-semibold text-center text-muted-foreground bg-muted py-2 px-4 rounded-lg">
+              {`${qrOrigin}/m/recepcion/${selectedDetailOT.id}`}
+            </p>
+          </div>
         </div>
       )}
 
