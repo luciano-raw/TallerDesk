@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useSystemAuth } from "@/components/auth-wrapper";
 import { LandingAuthButtons } from "@/components/landing-auth-buttons";
+import { createSolicitudRegistro } from "@/lib/db-actions";
 import { 
   Wrench, 
   ShieldCheck, 
@@ -24,14 +25,28 @@ import {
 export default function Home() {
   const { roles } = useSystemAuth();
   const [formSubmitted, setFormSubmitted] = useState(false);
-  const [contactInfo, setContactInfo] = useState({ name: "", email: "", workshop: "", message: "" });
+  const [contactInfo, setContactInfo] = useState({ name: "", email: "", workshop: "", phone: "" });
 
-  const handleContactSubmit = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    
+    // Aqu est la magia: Creamos la solicitud en la base de datos
+    await createSolicitudRegistro({
+      nombre: contactInfo.name,
+      email: contactInfo.email,
+      nombreTaller: contactInfo.workshop,
+      telefono: contactInfo.phone
+    });
+    
+    setLoading(false);
     setFormSubmitted(true);
     setTimeout(() => {
-      setContactInfo({ name: "", email: "", workshop: "", message: "" });
-    }, 3000);
+      setContactInfo({ name: "", email: "", workshop: "", phone: "" });
+      setFormSubmitted(false);
+    }, 5000);
   };
 
   return (
@@ -459,20 +474,20 @@ export default function Home() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1">Mensaje o Requerimientos</label>
-                    <textarea 
-                      rows={3}
-                      value={contactInfo.message}
-                      onChange={(e) => setContactInfo({...contactInfo, message: e.target.value})}
-                      placeholder="Cuéntanos qué servicios realizas y cuántos mecánicos tienes..."
-                      className="w-full p-3 rounded-lg border border-input bg-background text-sm focus:border-primary focus:outline-none"
-                    ></textarea>
+                    <label className="block text-xs font-semibold mb-1">Teléfono / WhatsApp</label>
+                    <input 
+                      type="tel"
+                      value={contactInfo.phone}
+                      onChange={(e) => setContactInfo({...contactInfo, phone: e.target.value})}
+                      placeholder="Ej: +56 9 1234 5678"
+                      className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:border-primary focus:outline-none"
+                    />
                   </div>
                   <button 
                     type="submit"
                     className="w-full h-10 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary/95 transition-all glow-green-sm"
                   >
-                    Enviar Solicitud
+                    {loading ? "Enviando..." : "Enviar Solicitud"}
                   </button>
                 </form>
               )}

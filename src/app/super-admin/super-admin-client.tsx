@@ -22,8 +22,18 @@ import {
   toggleTallerActivo, 
   updateTallerPlan, 
   getUsuarios, 
-  updateUserRoleAndTaller, updateTallerSubscription, deleteTaller, preRegistrarUsuario 
+  updateUserRoleAndTaller, updateTallerSubscription, deleteTaller, preRegistrarUsuario, getSolicitudesPendientes, updateSolicitudEstado 
 } from "@/lib/db-actions";
+
+
+interface SolicitudInfo {
+  id: string;
+  nombre: string;
+  email: string;
+  nombreTaller: string;
+  telefono: string | null;
+  createdAt: string;
+}
 
 interface TallerInfo {
   id: string;
@@ -105,7 +115,10 @@ export default function SuperAdminClient() {
   const [talleres, setTalleres] = useState<TallerInfo[]>(mockTalleres);
   const [usuarios, setUsuarios] = useState<UsuarioInfo[]>(mockUsuarios);
   
-  const [activeTab, setActiveTab] = useState<"talleres" | "usuarios">("talleres");
+
+  const [solicitudes, setSolicitudes] = useState<SolicitudInfo[]>([]);
+  const [activeTab, setActiveTab] = useState<"talleres" | "usuarios" | "solicitudes">("talleres");
+
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeleteTallerModal, setShowDeleteTallerModal] = useState<string | null>(null);
@@ -124,6 +137,16 @@ export default function SuperAdminClient() {
   const loadDbData = async () => {
     const dbTalleres = await getTalleres();
     const dbUsuarios = await getUsuarios();
+    const dbSolicitudes = await getSolicitudesPendientes();
+    setSolicitudes(dbSolicitudes.map((s: any) => ({
+      id: s.id,
+      nombre: s.nombre,
+      email: s.email,
+      nombreTaller: s.nombreTaller,
+      telefono: s.telefono,
+      createdAt: new Date(s.createdAt).toISOString().split("T")[0]
+    })));
+
     
     // Mapeo simple de Prisma a nuestras interfaces locales
     setTalleres(dbTalleres.map((t: any) => ({
@@ -176,6 +199,24 @@ export default function SuperAdminClient() {
       </div>
     );
   }
+
+
+  const handleAprobarSolicitud = (s: SolicitudInfo) => {
+    // Rellenamos el modal de crear taller
+    const slugVal = s.nombreTaller.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    setNewTaller({ nombre: s.nombreTaller, slug: slugVal, plan: "BASIC", ubicacion: "", maxTrabajadores: "5" });
+    setShowCreateModal(true);
+    // Luego el super admin le tocar crear el taller. Despus puede ir y pre-registrar al usuario manualmente,
+    // pero idealmente deberamos rechazar o marcar aprobada la solicitud.
+  };
+
+  const handleRechazarSolicitud = async (id: string) => {
+    if (!isDemoMode) {
+      await updateSolicitudEstado(id, "RECHAZADO");
+      triggerNotification("Solicitud rechazada");
+      loadDbData();
+    }
+  };
 
   // --- HANDLERS PARA TALLERES ---
 
@@ -389,6 +430,14 @@ export default function SuperAdminClient() {
             <Users size={13} />
             Permisos Usuarios ({usuarios.length})
           </button>
+          <button
+            onClick={() => setActiveTab("solicitudes")}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-semibold transition-all `}
+          >
+            <Sparkles size={13} />
+            Solicitudes ({solicitudes.length})
+          </button>
+
           <a
             href="/super-admin/proveedores"
             className="flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-semibold text-muted-foreground hover:text-foreground transition-all hover:bg-muted"
@@ -460,6 +509,49 @@ export default function SuperAdminClient() {
           <span className="text-[10px] text-success font-medium">Suscripciones vigentes</span>
         </div>
       </div>
+
+      
+      {activeTab === "solicitudes" && (
+        <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm flex-1">
+          <div className="p-5 border-b border-border">
+            <h2 className="font-bold text-sm">Solicitudes de Ingreso B2B</h2>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Prospectos que llenaron el formulario en la Landing Page.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-muted/50 border-b border-border text-muted-foreground font-bold uppercase tracking-wider">
+                  <th className="p-4">Prospecto</th>
+                  <th className="p-4">Contacto</th>
+                  <th className="p-4">Taller Interesado</th>
+                  <th className="p-4">Fecha</th>
+                  <th className="p-4 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {solicitudes.length === 0 && (
+                  <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No hay solicitudes pendientes.</td></tr>
+                )}
+                {solicitudes.map((s) => (
+                  <tr key={s.id} className="hover:bg-muted/35 transition-colors">
+                    <td className="p-4 font-semibold text-foreground">{s.nombre}</td>
+                    <td className="p-4 text-muted-foreground">
+                      <div className="block">{s.email}</div>
+                      <div className="block mt-0.5 text-[10px]">{s.telefono || 'Sin telfono'}</div>
+                    </td>
+                    <td className="p-4">{s.nombreTaller}</td>
+                    <td className="p-4 text-muted-foreground">{s.createdAt}</td>
+                    <td className="p-4 text-right flex items-center justify-end gap-2">
+                      <button onClick={() => handleAprobarSolicitud(s)} className="px-3 py-1 bg-primary text-white rounded font-bold hover:bg-primary/90 transition-colors">Gestionar Alta</button>
+                      <button onClick={() => handleRechazarSolicitud(s.id)} className="px-3 py-1 bg-destructive/10 text-destructive rounded font-bold hover:bg-destructive/20 transition-colors">Rechazar</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* VISTA 1: TABLA TALLERES */}
       {activeTab === "talleres" ? (

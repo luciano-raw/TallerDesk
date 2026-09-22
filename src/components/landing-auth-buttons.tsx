@@ -11,14 +11,22 @@ export function LandingAuthButtons() {
   // Si estamos en modo demo o no hay usuario real logueado, mostrar botón estándar
   if (isDemoMode || !user) {
     return (
+    <div className="flex items-center gap-3">
+      <Link 
+        href="#contact"
+        className="hidden md:flex items-center gap-1.5 px-4 h-9 rounded-lg border border-primary/50 text-primary text-xs md:text-sm font-semibold hover:bg-primary/10 transition-all cursor-pointer"
+      >
+        Solicitar Acceso
+      </Link>
       <Link 
         href="/dashboard"
         className="flex items-center gap-1.5 px-4 h-9 rounded-lg bg-primary text-white text-xs md:text-sm font-semibold hover:bg-primary/95 transition-all glow-green-sm hover:scale-[1.02] cursor-pointer"
       >
         <UserCheck size={14} />
-        Iniciar Sesión
+        Iniciar Sesin
       </Link>
-    );
+    </div>
+  );
   }
 
   // Si hay una sesión activa de Clerk, mostrar botones de continuar o cambiar cuenta

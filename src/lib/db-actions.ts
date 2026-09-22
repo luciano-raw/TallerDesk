@@ -2057,3 +2057,48 @@ export async function preRegistrarUsuario(email: string, nombre: string, tallerI
     return { success: false, error: error.message };
   }
 }
+
+// --- SOLICITUDES DE REGISTRO (LANDING PAGE) ---
+
+export async function createSolicitudRegistro(data: { nombre: string, email: string, nombreTaller: string, telefono?: string }) {
+  try {
+    const solicitud = await prisma.solicitudRegistro.create({
+      data: {
+        nombre: data.nombre,
+        email: data.email,
+        nombreTaller: data.nombreTaller,
+        telefono: data.telefono,
+        estado: 'PENDIENTE'
+      }
+    });
+    return { success: true, data: solicitud };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getSolicitudesPendientes() {
+  try {
+    const solicitudes = await prisma.solicitudRegistro.findMany({
+      where: { estado: 'PENDIENTE' },
+      orderBy: { createdAt: 'desc' }
+    });
+    return JSON.parse(JSON.stringify(solicitudes));
+  } catch (error) {
+    console.error('Error getSolicitudesPendientes:', error);
+    return [];
+  }
+}
+
+export async function updateSolicitudEstado(id: string, estado: 'APROBADO' | 'RECHAZADO') {
+  try {
+    await prisma.solicitudRegistro.update({
+      where: { id },
+      data: { estado }
+    });
+    revalidatePath('/super-admin');
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
