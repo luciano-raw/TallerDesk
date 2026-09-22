@@ -110,7 +110,10 @@ export function AuthProvider({ children, dbUser }: { children: React.ReactNode; 
     if (!isLoaded) return; // Esperar a que Clerk cargue
 
     if (!demoMode) {
-      if (clerkUser) {
+      if (dbUser) {
+        // Ya cargado por SSR, no sobreescribir
+        setProfileLoading(false);
+      } else if (clerkUser) {
         getCurrentUserDbProfile({
           id: clerkUser.id,
           email: clerkUser.primaryEmailAddress?.emailAddress || "",

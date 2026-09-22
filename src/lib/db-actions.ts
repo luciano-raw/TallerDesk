@@ -2040,15 +2040,20 @@ export async function deleteTaller(id: string) {
 
 export async function preRegistrarUsuario(email: string, nombre: string, tallerId: string, role: string) {
   try {
-    const existing = await prisma.usuario.findFirst({ where: { email } });
-    if (existing) return { success: false, error: 'Correo ya registrado' };
+    // Verificar si YA est en ESTE taller
+    const existingInTaller = await prisma.usuario.findFirst({ where: { email, tallerId } });
+    if (existingInTaller) return { success: false, error: 'Correo ya registrado en este Taller' };
+
+    // Buscar si existe en la BD para heredar el clerkId si es que ya se logue
+    const anyExisting = await prisma.usuario.findFirst({ where: { email }, orderBy: { createdAt: 'desc' } });
 
     const u = await prisma.usuario.create({
       data: {
         email,
         nombre,
         roles: [role as any],
-        tallerId
+        tallerId,
+        clerkId: anyExisting?.clerkId // Heredar el clerkId para que lo enganche automtico si ya existe
       }
     });
     revalidatePath('/super-admin');
