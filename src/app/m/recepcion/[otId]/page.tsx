@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import MobileWizardClient from "./client";
 import { Car } from "lucide-react";
 
-export default async function MobileReceptionPage({ params }: { params: { otId: string } }) {
-  const ot = await getOTByIdParaRecepcion(params.otId);
+export default async function MobileReceptionPage({ params }: { params: Promise<{ otId: string }> }) {
+  const { otId } = await params;
+  const ot = await getOTByIdParaRecepcion(otId);
   
   if (!ot) {
     return (
