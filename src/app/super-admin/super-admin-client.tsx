@@ -127,16 +127,19 @@ export default function SuperAdminClient() {
   const [showRoleModal, setShowRoleModal] = useState<string | null>(null);
   const [tempRoles, setTempRoles] = useState<string[]>([]);
   const [isSavingRoles, setIsSavingRoles] = useState(false);
+  const [isSubmittingUser, setIsSubmittingUser] = useState(false);
 
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [newUser, setNewUser] = useState({ email: "", nombre: "", role: "TALLER_ADMIN", tallerId: "" });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterTaller, setFilterTaller] = useState<string>("");
 
   const [newTaller, setNewTaller] = useState({ nombre: "", slug: "", plan: "BASIC", ubicacion: "", maxTrabajadores: "5" });
-  const [notification, setNotification] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
 
-  const triggerNotification = (msg: string) => {
-    setNotification(msg);
-    setTimeout(() => setNotification(null), 3000);
+  const triggerNotification = (msg: string, type: 'success' | 'error' = 'success') => {
+    setNotification({msg, type});
+    setTimeout(() => setNotification(null), 4000);
   };
 
   // Función para cargar datos reales desde Supabase
@@ -256,13 +259,20 @@ export default function SuperAdminClient() {
     if (!newUser.email || !newUser.nombre || !newUser.tallerId) return;
     
     if (!isDemoMode) {
-      const res = await preRegistrarUsuario(newUser.email, newUser.nombre, newUser.tallerId, newUser.role);
-      if (res.success) {
-        triggerNotification("Usuario pre-registrado correctamente");
-        loadDbData();
-        setShowCreateUserModal(false);
-      } else {
-        triggerNotification("Error: " + res.error);
+      setIsSubmittingUser(true);
+      try {
+        const res = await preRegistrarUsuario(newUser.email, newUser.nombre, newUser.tallerId, newUser.role);
+        if (res.success) {
+          triggerNotification("Usuario pre-registrado correctamente", "success");
+          await loadDbData();
+          setShowCreateUserModal(false);
+        } else {
+          triggerNotification(res.error || "Error desconocido", "error");
+        }
+      } catch (err: any) {
+        triggerNotification(err.message || "Error al crear usuario", "error");
+      } finally {
+        setIsSubmittingUser(false);
       }
     }
   };
@@ -398,9 +408,9 @@ export default function SuperAdminClient() {
     <div className="min-h-screen bg-background text-foreground flex flex-col p-4 md:p-8">
       {/* NOTIFICACION */}
       {notification && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-primary text-white text-xs font-semibold rounded-lg shadow-lg flex items-center gap-2 animate-fade-in">
-          <Sparkles size={14} />
-          {notification}
+        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-4 py-3 text-sm font-semibold rounded-lg shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-5 ${notification.type === 'error' ? 'bg-red-600 text-white' : 'bg-primary text-white'}`}>
+          <Sparkles size={16} />
+          {notification.msg}
         </div>
       )}
 
@@ -773,7 +783,10 @@ export default function SuperAdminClient() {
                    {talleres.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
                 </select>
               </div>
-              <button type="submit" className="w-full h-10 bg-primary text-white rounded font-bold mt-4">Registrar</button>
+              <button type="submit" disabled={isSubmittingUser} className="w-full px-4 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2">
+                {isSubmittingUser ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : null}
+                Registrar
+              </button>
             </form>
           </div>
         </div>
