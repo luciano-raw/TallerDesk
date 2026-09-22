@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useSystemAuth, UserButton } from "@/components/auth-wrapper";
 import { 
-  Building2, 
+  Building2,
+  Check, 
   Plus, 
   X, 
   BarChart, 
@@ -122,6 +123,11 @@ export default function SuperAdminClient() {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeleteTallerModal, setShowDeleteTallerModal] = useState<string | null>(null);
+
+  const [showRoleModal, setShowRoleModal] = useState<string | null>(null);
+  const [tempRoles, setTempRoles] = useState<string[]>([]);
+  const [isSavingRoles, setIsSavingRoles] = useState(false);
+
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [newUser, setNewUser] = useState({ email: "", nombre: "", role: "TALLER_ADMIN", tallerId: "" });
 
@@ -660,21 +666,18 @@ export default function SuperAdminClient() {
                       <span className="text-muted-foreground text-[10px] block mt-0.5">{u.email}</span>
                     </td>
                     <td className="p-4">
-                      <select
-                        multiple
-                        value={u.roles || []}
-                        onChange={(e) => {
-                          const selected = Array.from(e.target.selectedOptions, option => option.value);
-                          handleUserRoleChange(u.id, selected as any);
+                      
+                      <button
+                        onClick={() => {
+                          setTempRoles(u.roles || []);
+                          setShowRoleModal(u.id);
                         }}
-                        className="bg-background border border-border rounded px-2 py-1 text-xs focus:outline-none focus:border-primary font-medium h-16 overflow-y-auto"
+                        className="px-3 py-1.5 rounded-lg bg-secondary text-secondary-foreground text-[10px] font-bold hover:bg-secondary/80 transition-colors inline-flex items-center gap-1.5"
                       >
-                        <option value="SUPER_ADMIN">SUPER_ADMIN (SaaS)</option>
-                        <option value="TALLER_ADMIN">TALLER_ADMIN (Dueño)</option>
-                        <option value="TALLER_RECEP">TALLER_RECEP (Recepcionista)</option>
-                        <option value="TALLER_TECNICO">TALLER_TECNICO (Mecánico)</option>
-                        <option value="TALLER_JEFE">TALLER_JEFE (Jefe de Taller)</option>
-                      </select>
+                        <ShieldAlert size={12} />
+                        Editar Roles ({u.roles?.length || 0})
+                      </button>
+
                     </td>
                     <td className="p-4">
                       {u.roles?.includes("SUPER_ADMIN") ? (
@@ -772,6 +775,53 @@ export default function SuperAdminClient() {
               </div>
               <button type="submit" className="w-full h-10 bg-primary text-white rounded font-bold mt-4">Registrar</button>
             </form>
+          </div>
+        </div>
+      )}
+
+      
+      {showRoleModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-scale-in">
+            <div className="flex justify-between border-b border-border pb-3 mb-4">
+              <h3 className="font-bold text-base">Gestionar Roles</h3>
+              <button onClick={() => setShowRoleModal(null)}><X size={18} /></button>
+            </div>
+            <div className="space-y-3 mb-6">
+              {[
+                { id: 'SUPER_ADMIN', label: 'SUPER_ADMIN (SaaS)' },
+                { id: 'TALLER_ADMIN', label: 'TALLER_ADMIN (Dueo)' },
+                { id: 'TALLER_RECEP', label: 'TALLER_RECEP (Recepcionista)' },
+                { id: 'TALLER_JEFE', label: 'TALLER_JEFE (Jefe de Taller)' },
+                { id: 'TALLER_TECNICO', label: 'TALLER_TECNICO (Mecnico)' },
+              ].map(rol => (
+                <label key={rol.id} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-background hover:border-primary/50 cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                    checked={tempRoles.includes(rol.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) setTempRoles([...tempRoles, rol.id]);
+                      else setTempRoles(tempRoles.filter(r => r !== rol.id));
+                    }}
+                  />
+                  <span className="text-sm font-semibold">{rol.label}</span>
+                </label>
+              ))}
+            </div>
+            <button
+              onClick={async () => {
+                setIsSavingRoles(true);
+                await handleUserRoleChange(showRoleModal, tempRoles as any);
+                setIsSavingRoles(false);
+                setShowRoleModal(null);
+              }}
+              disabled={isSavingRoles}
+              className="w-full h-10 flex items-center justify-center gap-2 bg-primary text-white rounded-lg font-bold disabled:opacity-70"
+            >
+              {isSavingRoles ? <Sparkles size={16} className="animate-spin" /> : <Check size={16} />}
+              {isSavingRoles ? 'Guardando...' : 'Guardar Cambios'}
+            </button>
           </div>
         </div>
       )}
