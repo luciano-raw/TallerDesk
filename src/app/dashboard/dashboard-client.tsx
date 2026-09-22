@@ -10,7 +10,7 @@ import {
   Car, 
   ClipboardList, 
   DollarSign, 
-  Plus, 
+  Plus, Smartphone, 
   ExternalLink, 
   User, 
   Wrench, 
@@ -104,6 +104,11 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
   const years = getYears();
   const [submitting, setSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [qrOrigin, setQrOrigin] = useState("");
+  useEffect(() => { setQrOrigin(window.location.origin); }, []);
+  
+
 
   const handlePreSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -2037,6 +2042,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
         )}
       </main>
 
+      
       {/* Confirmation Modal */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
@@ -2525,15 +2531,23 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                     </div>
                   )}
 
-                  <div className="mt-4 pt-4 border-t border-border">
+                  <div className="mt-4 pt-4 border-t border-border flex flex-col gap-2">
                     <EvidenciaUploader 
                       ordenTrabajoId={selectedDetailOT.id} 
                       esRecepcion={true} 
                       onUploadSuccess={(url) => {
                          triggerNotification("Foto de recepcin subida con xito");
+                         fetchDbData(selectedDetailOT.id);
                       }} 
-                      label="Subir Foto de Recepcin" 
+                      label="Subir Foto de Recepcin (PC)" 
                     />
+                    <button
+                      onClick={() => setShowQRModal(true)}
+                      className="w-full h-10 border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 rounded-xl flex items-center justify-center gap-2 font-bold text-xs transition-colors"
+                    >
+                      <Smartphone size={16} />
+                      Tomar fotos con celular (Recomendado)
+                    </button>
                   </div>
                 </div>
 

@@ -2102,3 +2102,19 @@ export async function updateSolicitudEstado(id: string, estado: 'APROBADO' | 'RE
     return { success: false, error: error.message };
   }
 }
+
+export async function getOTByIdParaRecepcion(id: string) {
+  try {
+    const ot = await prisma.ordenTrabajo.findUnique({
+      where: { id },
+      include: {
+        vehiculo: true,
+        taller: true
+      }
+    });
+    return JSON.parse(JSON.stringify(ot));
+  } catch (error) {
+    console.error('Error al obtener OT para recepcion:', error);
+    return null;
+  }
+}
