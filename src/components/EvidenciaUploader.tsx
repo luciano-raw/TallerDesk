@@ -50,8 +50,8 @@ export default function EvidenciaUploader({
       const compressedFile = await imageCompression(file, options);
       
       const fileExt = compressedFile.name.split('.').pop() || 'jpg';
-      const fileName = `-.`;
-      const filePath = `/`;
+      const fileName = `${ordenTrabajoId}-${Date.now()}.${fileExt}`;
+      const filePath = `${ordenTrabajoId}/${fileName}`;
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("ot-evidencias")
