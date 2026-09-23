@@ -2585,10 +2585,12 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                     </p>
                     <div className="grid grid-cols-3 gap-2">
                       {selectedDetailOT.fotos.map((foto: any) => (
-                        <div 
+                        <a 
                           key={foto.id} 
-                          onClick={() => window.open(foto.url, "_blank")}
-                          className="relative group aspect-square rounded-xl overflow-hidden border border-border shadow-sm cursor-pointer hover:ring-2 ring-primary/50 transition-all"
+                          href={foto.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block relative group aspect-square rounded-xl overflow-hidden border border-border shadow-sm cursor-pointer hover:ring-2 ring-primary/50 transition-all"
                         >
                           <img src={foto.url} alt={foto.descripcion} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 pt-4 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -2601,7 +2603,7 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                               RECEP
                             </div>
                           )}
-                        </div>
+                        </a>
                       ))}
                     </div>
                   </div>
