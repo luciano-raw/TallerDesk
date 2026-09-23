@@ -73,18 +73,38 @@ export default function MobileWizardClient({ otId, vehiculoInfo }: MobileWizardC
         // Renombrar archivo para identificar el costado
         const finalFile = new File([compressedFile], `recepcion_.jpg`, { type: 'image/jpeg' });
 
-        const formData = new FormData();
-        formData.append("file", finalFile);
-        formData.append("otId", otId);
-        formData.append("description", `Recepcin - `);
+        // Subir a Supabase
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+        const { createClient } = await import("@supabase/supabase-js");
+        const supabase = createClient(supabaseUrl, supabaseAnonKey);
+        
+        const filePath = `${otId}/recepcion-${key}-${Date.now()}.jpg`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from("ot-evidencias")
+          .upload(filePath, finalFile);
+          
+        if (uploadError) throw uploadError;
+        
+        const { data: { publicUrl } } = supabase.storage
+          .from("ot-evidencias")
+          .getPublicUrl(filePath);
 
+        // Guardar en la base de datos
         const res = await fetch("/api/upload-evidencia", {
           method: "POST",
-          body: formData
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ordenTrabajoId: otId,
+            esRecepcion: true,
+            url: publicUrl,
+            descripcion: `Recepción - ${stepLabel}`
+          })
         });
 
         if (!res.ok) {
-          throw new Error(`Error al subir la foto `);
+          throw new Error(`Error de API al subir la foto`);
         }
 
         subidas++;
