@@ -2575,7 +2575,36 @@ export default function DashboardClient({ initialDbUser }: { initialDbUser: any 
                   )}
                 </div>
 
-{/* 3. Fotos de Avance (Oculto temporalmente) */}
+{/* 3. Fotos y Evidencia */}
+                {selectedDetailOT.fotos && selectedDetailOT.fotos.length > 0 && (
+                  <div className="space-y-2.5">
+                    <p className="text-[10px] font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                      <Camera size={12} />
+                      Evidencia Fotográfica
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {selectedDetailOT.fotos.map((foto: any) => (
+                        <div 
+                          key={foto.id} 
+                          onClick={() => window.open(foto.url, "_blank")}
+                          className="relative group aspect-square rounded-xl overflow-hidden border border-border shadow-sm cursor-pointer hover:ring-2 ring-primary/50 transition-all"
+                        >
+                          <img src={foto.url} alt={foto.descripcion} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 pt-4 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="text-[9px] text-white font-semibold truncate px-1 text-center w-full">
+                              {foto.descripcion || (foto.esRecepcion ? "Recepción" : "Avance")}
+                            </span>
+                          </div>
+                          {foto.esRecepcion && (
+                            <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded text-[8px] font-bold bg-blue-500 text-white shadow-sm" title="Foto de Recepción">
+                              RECEP
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
               </div>
 
