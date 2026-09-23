@@ -24,7 +24,8 @@ import {
   CheckCircle2,
   Clock,
   Printer,
-  X
+  X,
+  Camera
 } from "lucide-react";
 import { 
   getTallerOTs, 
