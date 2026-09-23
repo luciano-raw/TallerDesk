@@ -76,13 +76,15 @@ export default function EvidenciaUploader({
       });
 
       const dbRes = await res.json();
-      if (!dbRes.success) throw new Error(dbRes.error);
+      if (!dbRes.success) throw new Error(`API: ${dbRes.error}`);
 
       onUploadSuccess(publicUrl, dbRes.data.id);
       
     } catch (err: any) {
       console.error("Error al subir:", err);
-      setError(err.message || "Error al subir la imagen");
+      // Extraer mensaje detallado
+      const errMsg = err?.message || err?.error || JSON.stringify(err);
+      setError(`Error al subir la imagen: ${errMsg}`);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
